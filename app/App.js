@@ -107,12 +107,23 @@ export default function App() {
   }
 
   // ── Sesión contador ────────────────────────────────────────
-  return (
-    <>
-      <StatusBar style="light" />
-      <DashboardContador onLogout={handleLogout} />
-    </>
-  );
+  if (rol === 'contador') {
+    if (currentScreen === 'Historial')
+      return <><StatusBar style="light" /><Historial onBack={goBack} /></>;
+    if (currentScreen === 'Perfil')
+      return <><StatusBar style="light" /><Perfil onBack={goBack} /></>;
+    if (currentScreen === 'Reportes')
+      return <><StatusBar style="light" /><Reportes onBack={goBack} /></>;
+
+    return (
+      <>
+        <StatusBar style="light" />
+        <DashboardContador onLogout={handleLogout} onNavigate={navigate} />
+      </>
+    );
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({

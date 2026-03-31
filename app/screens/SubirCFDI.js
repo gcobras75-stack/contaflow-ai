@@ -74,8 +74,51 @@ export default function SubirCFDI({ onBack }) {
       Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara para fotografiar el CFDI.');
       return;
     }
-    await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.9 });
-    Alert.alert('Foto capturada', 'El análisis OCR de imagen estará disponible próximamente. Sube el XML para procesar.');
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9,
+    });
+    if (result.canceled) return;
+
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: usuario } = await supabase
+        .from('usuarios').select('empresa_id').eq('id', user.id).single();
+
+      const asset = result.assets[0];
+      const filePath = `cfdis/${usuario?.empresa_id ?? user.id}/${Date.now()}.jpg`;
+
+      const response = await fetch(asset.uri);
+      const blob = await response.blob();
+
+      const { error: storageErr } = await supabase.storage
+        .from('archivos-contaflow')
+        .upload(filePath, blob, { contentType: 'image/jpeg', upsert: false });
+
+      if (storageErr) {
+        mostrarError(`Error al subir foto: ${storageErr.message}`);
+        return;
+      }
+
+      const { error: dbErr } = await supabase.from('cfdis').insert({
+        empresa_id: usuario?.empresa_id ?? null,
+        xml_url: filePath,
+        status: 'pendiente',
+      });
+
+      if (dbErr) {
+        mostrarError(`Error al guardar: ${dbErr.message}`);
+        return;
+      }
+
+      setCfdiData({ uuid: null, total: null, esFoto: true });
+      setEtapa('exito');
+    } catch {
+      mostrarError('Error al procesar la foto.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const procesarArchivo = async (uri, nombre) => {
@@ -221,11 +264,14 @@ export default function SubirCFDI({ onBack }) {
       {etapa === 'exito' && (
         <View style={styles.centrado}>
           <Ionicons name="checkmark-done-circle" size={80} color={C.verde} />
-          <Text style={[styles.title, { color: C.verde }]}>CFDI registrado</Text>
+          <Text style={[styles.title, { color: C.verde }]}>
+            {cfdiData?.esFoto ? 'Foto guardada' : 'CFDI registrado'}
+          </Text>
           <Text style={styles.exitoSub}>
-            UUID: {cfdiData?.uuid?.slice(0, 8)}...{'\n'}
-            Total: {fmt(cfdiData?.total)}{'\n'}
-            Status: Pendiente de revisión
+            {cfdiData?.esFoto
+              ? `Foto subida al storage\nStatus: Pendiente de revisión`
+              : `UUID: ${cfdiData?.uuid?.slice(0, 8)}...\nTotal: ${fmt(cfdiData?.total)}\nStatus: Pendiente de revisión`
+            }
           </Text>
           <TouchableOpacity style={styles.btnPrimary} onPress={reiniciar}>
             <Ionicons name="add-circle-outline" size={22} color={C.blanco} />

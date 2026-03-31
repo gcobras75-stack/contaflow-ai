@@ -92,20 +92,20 @@ export default function SubirEstadoCuenta({ onBack }) {
         .from('usuarios').select('empresa_id').eq('id', user.id).single();
 
       const extension = archivo.nombre.split('.').pop() ?? 'bin';
-      const filePath = `${usuario?.empresa_id ?? user.id}/${Date.now()}.${extension}`;
+      const filePath = `estados-cuenta/${usuario?.empresa_id ?? user.id}/${Date.now()}.${extension}`;
 
       const fileContent = await fetch(archivo.uri);
       const blob = await fileContent.blob();
 
       const { error: storageErr } = await supabase.storage
-        .from('estados-cuenta')
+        .from('archivos-contaflow')
         .upload(filePath, blob, { contentType: archivo.mimeType, upsert: false });
 
       if (storageErr && storageErr.message !== 'The resource already exists') {
         console.warn('Storage error:', storageErr.message);
       }
 
-      const archivoUrl = storageErr ? null : `estados-cuenta/${filePath}`;
+      const archivoUrl = storageErr ? null : filePath;
 
       setEtapa('procesando');
 
