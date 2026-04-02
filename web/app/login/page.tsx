@@ -47,14 +47,16 @@ export default function LoginPage() {
         return;
       }
 
-      if (usuario.rol !== 'contador') {
+      if (usuario.rol !== 'contador' && usuario.rol !== 'superadmin') {
         setError('Acceso denegado. Usa la app móvil para acceder como empresa.');
         await supabase.auth.signOut();
         setLoading(false);
         return;
       }
 
-      router.push('/dashboard');
+      // Hard redirect: fuerza recarga completa para que las cookies
+      // de sesión lleguen correctamente al middleware del servidor.
+      window.location.href = usuario.rol === 'superadmin' ? '/admin' : '/dashboard';
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
       setLoading(false);
