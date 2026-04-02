@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
@@ -39,7 +39,7 @@ const STATUS_CFDI: Record<string, { label: string; badge: string; text: string }
   rechazado: { label: 'Rechazado', badge: 'bg-red-100',    text: 'text-red-700'    },
 };
 
-export default function EmpresaDetallePage() {
+function EmpresaDetalleContent() {
   const params = useSearchParams();
   const empresaId = params.get('id');
 
@@ -242,5 +242,17 @@ export default function EmpresaDetallePage() {
 
       </main>
     </div>
+  );
+}
+
+export default function EmpresaDetallePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1B3A6B]" />
+      </div>
+    }>
+      <EmpresaDetalleContent />
+    </Suspense>
   );
 }
