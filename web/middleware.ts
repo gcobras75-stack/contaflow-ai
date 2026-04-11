@@ -15,12 +15,14 @@
 import { createServerClient } from '@supabase/ssr';
 import { type NextRequest, NextResponse } from 'next/server';
 
-// Rutas bajo /dashboard que el contador DEBE poder visitar incluso con el
-// despacho sin suscripciones operables — para pagar y reactivar su cuenta.
-// /dashboard/configuracion y /dashboard/billing permiten checkout Mercado Pago.
+// Rutas bajo /dashboard que DEBEN poder visitarse incluso sin suscripción
+// operable. Los miembros de la red comercial (coordinadores/vendedores) viven
+// en /dashboard/red-comercial y pueden no tener empresas clientes propias.
+// Las rutas de billing/config permiten reactivar/pagar una cuenta suspendida.
 const RUTAS_EXCENTAS_SUSPENSION = [
   '/dashboard/configuracion',
   '/dashboard/billing',
+  '/dashboard/red-comercial',
 ];
 
 type SuscripcionRow = {

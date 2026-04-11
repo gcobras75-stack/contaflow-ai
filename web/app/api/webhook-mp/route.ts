@@ -14,6 +14,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { procesarComisiones, notificarComision, RFC_AUTOMATIA } from '@/lib/comisiones';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -204,6 +205,52 @@ export async function POST(req: NextRequest) {
           .from('empresas_clientes')
           .update({ activa: true })
           .eq('id', empresaId);
+
+        // ─── Disparar cálculo de comisiones de la red comercial ───
+        // Idempotente vía UNIQUE(mp_payment_id, beneficiario_id, beneficiario_tipo).
+        // No bloquea la respuesta al webhook si falla — MP solo necesita 200.
+        try {
+          const resumen = await procesarComisiones(supabaseAdmin, {
+            mp_payment_id: String(paymentId),
+            empresa_id:    empresaId,
+            monto:         Number(pago.transaction_amount ?? 0),
+            fecha_pago:    pago.date_approved ? new Date(pago.date_approved) : ahora,
+          });
+
+          // Notificaciones stub (TODO: Resend cuando haya provider)
+          const monto = Number(pago.transaction_amount ?? 0);
+          if (resumen.coordinador_email) {
+            notificarComision({
+              to:       resumen.coordinador_email,
+              tipo:     'coordinador',
+              monto:    monto * 0.20,
+              rfcAdmin: RFC_AUTOMATIA,
+              tieneRfc: false, // el helper maneja el caso tiene_rfc=true via mensaje correcto
+            });
+          }
+          if (resumen.vendedor_email) {
+            notificarComision({
+              to:       resumen.vendedor_email,
+              tipo:     'vendedor',
+              monto:    monto * 0.10,
+              rfcAdmin: RFC_AUTOMATIA,
+              tieneRfc: false,
+            });
+          }
+          if (resumen.contador_email) {
+            notificarComision({
+              to:       resumen.contador_email,
+              tipo:     'contador',
+              monto:    monto * 0.10,
+              rfcAdmin: RFC_AUTOMATIA,
+              tieneRfc: false,
+            });
+          }
+
+          console.log('[webhook-mp] comisiones creadas:', resumen.comisiones_creadas);
+        } catch (comErr) {
+          console.error('[webhook-mp] error comisiones (no-fatal):', comErr);
+        }
       }
       // pago_pendiente: NO desactivar todavía; el cron lo hará tras 3 días
     }

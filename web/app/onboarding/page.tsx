@@ -149,6 +149,47 @@ export default function OnboardingPage() {
         .update({ despacho_id: desp.id, rol: 'contador' })
         .eq('id', userId);
 
+      // Registro de referral: busca código en localStorage (/ref/XXX) o en URL
+      try {
+        let codigoRef = null;
+        if (typeof window !== 'undefined') {
+          codigoRef = localStorage.getItem('contaflow_ref');
+          if (!codigoRef) {
+            const urlRef = new URLSearchParams(window.location.search).get('ref');
+            if (urlRef) codigoRef = urlRef.toUpperCase().trim();
+          }
+        }
+        if (codigoRef) {
+          // Buscar vendedor activo con ese código (case-insensitive)
+          const { data: vendedor } = await supabase
+            .from('red_comercial')
+            .select('id, rol, coordinador_id')
+            .ilike('codigo_referido', codigoRef)
+            .eq('activo', true)
+            .maybeSingle();
+
+          if (vendedor) {
+            // Regla de negocio: solo vendedores generan referidos con cadena
+            // completa (vendedor + coordinador). Si el código es de un
+            // coordinador directo (no vendedor), guardamos sin vendedor_id.
+            const isVendedor = vendedor.rol === 'vendedor';
+            await supabase.from('referidos').insert({
+              contador_id:    userId,
+              vendedor_id:    isVendedor ? vendedor.id : null,
+              coordinador_id: isVendedor ? vendedor.coordinador_id : vendedor.id,
+              codigo_usado:   codigoRef,
+            });
+          }
+          // Limpiar el código tras intentar registrarlo (usado o inválido)
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('contaflow_ref');
+          }
+        }
+      } catch (refErr) {
+        // No bloqueamos el alta si el referral falla — el contador sigue activo
+        console.warn('[onboarding] error registrando referral:', refErr);
+      }
+
       if (usrErr) throw new Error(usrErr.message);
 
       if (empresa.nombre.trim() && empresa.rfc.trim()) {
