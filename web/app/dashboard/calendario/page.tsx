@@ -1,242 +1,351 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+/**
+ * Calendario fiscal — lee de la tabla calendario_obligaciones (migración 005).
+ *
+ * - RLS filtra automáticamente al despacho del contador autenticado
+ * - Art. 12 CFF ya está aplicado en fecha_limite (calculada en SQL)
+ * - Marcar presentado actualiza status + fecha_presentacion + presentado_por
+ * - Filtros: mes/año, empresa, status
+ * - El cron cron-calendario-vencidos convierte pendiente → vencido
+ *   al pasar la fecha, y cron-notificar-obligaciones envía recordatorios
+ */
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type Empresa = { id: string; nombre: string; rfc: string; giro: string | null };
+type Empresa = { id: string; nombre: string; rfc: string };
 
 type Obligacion = {
-  titulo:       string;
-  descripcion:  string;
-  fechaLimite:  Date;
-  color:        string;
-  icono:        string;
-  empresas:     string[];
+  id:                 string;
+  empresa_id:         string;
+  tipo:               string;
+  obligacion:         string;
+  periodo:            string;
+  fecha_limite_base:  string;
+  fecha_limite:       string;
+  fecha_presentacion: string | null;
+  status:             'pendiente' | 'presentado' | 'vencido';
+  notas:              string | null;
 };
 
+type FiltroStatus = 'todos' | 'pendiente' | 'presentado' | 'vencido';
+
 const MESES = [
-  'Ene','Feb','Mar','Abr','May','Jun',
-  'Jul','Ago','Sep','Oct','Nov','Dic',
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
 ];
 
-function calcularObligaciones(empresas: Empresa[], anio: number, mes: number): Obligacion[] {
-  if (empresas.length === 0) return [];
-  const nombreEmpresas = empresas.map(e => e.nombre);
+const TIPO_LABEL: Record<string, { label: string; color: string }> = {
+  iva:             { label: 'IVA',             color: 'bg-blue-100 text-blue-700' },
+  isr_mensual:     { label: 'ISR RESICO',      color: 'bg-purple-100 text-purple-700' },
+  isr_provisional: { label: 'ISR provisional', color: 'bg-indigo-100 text-indigo-700' },
+  diot:            { label: 'DIOT',            color: 'bg-orange-100 text-orange-700' },
+  anual_pm:        { label: 'Anual PM',        color: 'bg-pink-100 text-pink-700' },
+  anual_pf:        { label: 'Anual PF',        color: 'bg-pink-100 text-pink-700' },
+};
 
-  // Día 17 del siguiente mes (si el 17 cae sábado o domingo, se recorre al lunes)
-  const ajustarDia17 = (a: number, m: number): Date => {
-    const d = new Date(a, m, 17); // m ya es 0-indexed para next month
-    const dow = d.getDay();
-    if (dow === 6) d.setDate(19);       // sábado → lunes
-    else if (dow === 0) d.setDate(18);  // domingo → lunes
-    return d;
+const STATUS_BADGE: Record<string, { label: string; color: string }> = {
+  pendiente:  { label: 'Pendiente',  color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  presentado: { label: 'Presentado', color: 'bg-green-100 text-green-700 border-green-200' },
+  vencido:    { label: 'Vencido',    color: 'bg-red-100 text-red-600 border-red-200' },
+};
+
+export default function CalendarioFiscalPage() {
+  const hoy = new Date();
+  const [empresas,      setEmpresas]      = useState<Empresa[]>([]);
+  const [obligaciones,  setObligaciones]  = useState<Obligacion[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [mes,           setMes]           = useState(hoy.getMonth());   // 0-11
+  const [anio,          setAnio]          = useState(hoy.getFullYear());
+  const [filtroEmpresa, setFiltroEmpresa] = useState<string>('todas');
+  const [filtroStatus,  setFiltroStatus]  = useState<FiltroStatus>('todos');
+  const [toast,         setToast]         = useState<{ msg: string; tipo: 'ok' | 'err' } | null>(null);
+  const [actualizando,  setActualizando]  = useState<string | null>(null);
+
+  const mostrarToast = (msg: string, tipo: 'ok' | 'err') => {
+    setToast({ msg, tipo });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  // Mes actual (0-indexed para Date)
-  const mesActual = mes - 1;
-  const diaLimite = ajustarDia17(mesActual === 11 ? anio + 1 : anio, mesActual === 11 ? 0 : mesActual + 1);
-
-  const obligaciones: Obligacion[] = [
-    {
-      titulo:      'Declaración mensual IVA',
-      descripcion: `IVA de ${MESES[mesActual]} ${anio} — presentar a más tardar el día 17`,
-      fechaLimite: diaLimite,
-      color:       '#1B3A6B',
-      icono:       '📊',
-      empresas:    nombreEmpresas,
-    },
-    {
-      titulo:      'DIOT',
-      descripcion: `Declaración Informativa de Operaciones con Terceros — operaciones de ${MESES[mesActual]}`,
-      fechaLimite: diaLimite,
-      color:       '#7C3AED',
-      icono:       '📋',
-      empresas:    nombreEmpresas,
-    },
-    {
-      titulo:      'Declaración mensual ISR',
-      descripcion: `Pagos provisionales ISR — ${MESES[mesActual]} ${anio}`,
-      fechaLimite: diaLimite,
-      color:       '#059669',
-      icono:       '📈',
-      empresas:    nombreEmpresas,
-    },
-  ];
-
-  // Declaración anual — solo en enero/febrero/marzo/abril
-  if (mes >= 1 && mes <= 4) {
-    const limiteAnual = new Date(anio, 3, 30); // 30 de abril
-    obligaciones.push({
-      titulo:      `Declaración anual ISR ${anio - 1}`,
-      descripcion: `Declaración anual del ejercicio ${anio - 1} — personas morales al 31 de marzo, físicas al 30 de abril`,
-      fechaLimite: limiteAnual,
-      color:       '#DC2626',
-      icono:       '📅',
-      empresas:    nombreEmpresas,
-    });
-  }
-
-  // IMSS/INFONAVIT — bimestral (meses pares)
-  if (mes % 2 === 0) {
-    const limiteBim = new Date(anio, mesActual + 1, 17);
-    obligaciones.push({
-      titulo:      'Cuotas IMSS / INFONAVIT',
-      descripcion: `Pago bimestral de cuotas obrero-patronales — bimestre ${Math.ceil(mes/2)}`,
-      fechaLimite: limiteBim,
-      color:       '#D97706',
-      icono:       '🏥',
-      empresas:    nombreEmpresas,
-    });
-  }
-
-  return obligaciones.sort((a, b) => a.fechaLimite.getTime() - b.fechaLimite.getTime());
-}
-
-function diasRestantes(fecha: Date): number {
-  return Math.ceil((fecha.getTime() - Date.now()) / 86400000);
-}
-
-function semaforo(dias: number): { bg: string; text: string; label: string } {
-  if (dias < 0)  return { bg: '#FFF1F2', text: '#DC2626', label: 'Vencida' };
-  if (dias <= 3) return { bg: '#FFF1F2', text: '#DC2626', label: `${dias}d` };
-  if (dias <= 7) return { bg: '#FFFBEB', text: '#D97706', label: `${dias}d` };
-  return          { bg: '#F0FDF4', text: '#16A34A', label: `${dias}d` };
-}
-
-export default function CalendarioPage() {
-  const hoy = new Date();
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [mes, setMes]           = useState(hoy.getMonth() + 1);
-  const [anio, setAnio]         = useState(hoy.getFullYear());
-
+  // Cargar empresas una sola vez
   useEffect(() => {
-    async function init() {
+    async function cargarEmpresas() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: usr } = await supabase.from('usuarios').select('despacho_id').eq('id', user.id).single();
-      if (!usr?.despacho_id) { setLoading(false); return; }
       const { data } = await supabase
-        .from('empresas_clientes').select('id, nombre, rfc, giro')
-        .eq('despacho_id', usr.despacho_id).eq('activa', true);
+        .from('empresas_clientes')
+        .select('id, nombre, rfc')
+        .eq('activa', true)
+        .order('nombre');
       setEmpresas(data ?? []);
-      setLoading(false);
     }
-    init();
+    cargarEmpresas();
   }, []);
 
-  const obligaciones = calcularObligaciones(empresas, anio, mes);
-  const anios = [hoy.getFullYear(), hoy.getFullYear() - 1];
+  // Cargar obligaciones del mes seleccionado
+  useEffect(() => {
+    async function cargarObligaciones() {
+      setLoading(true);
+      // Rango: primer día del mes anterior al siguiente día del mes siguiente
+      // (así captamos obligaciones del mes actual cuyo vencimiento cae en el siguiente).
+      const inicio = new Date(anio, mes, 1).toISOString().slice(0, 10);
+      const finObj = new Date(anio, mes + 2, 0);  // último día del mes siguiente
+      const fin    = finObj.toISOString().slice(0, 10);
 
-  const vencidas   = obligaciones.filter(o => diasRestantes(o.fechaLimite) < 0).length;
-  const urgentes   = obligaciones.filter(o => { const d = diasRestantes(o.fechaLimite); return d >= 0 && d <= 7; }).length;
-  const alCorriente = obligaciones.filter(o => diasRestantes(o.fechaLimite) > 7).length;
+      const { data, error } = await supabase
+        .from('calendario_obligaciones')
+        .select('id, empresa_id, tipo, obligacion, periodo, fecha_limite_base, fecha_limite, fecha_presentacion, status, notas')
+        .gte('fecha_limite', inicio)
+        .lte('fecha_limite', fin)
+        .order('fecha_limite', { ascending: true });
+
+      if (error) {
+        mostrarToast(`Error cargando obligaciones: ${error.message}`, 'err');
+        setObligaciones([]);
+      } else {
+        setObligaciones((data ?? []) as Obligacion[]);
+      }
+      setLoading(false);
+    }
+    cargarObligaciones();
+  }, [mes, anio]);
+
+  const empresaMap = useMemo(
+    () => new Map(empresas.map(e => [e.id, e])),
+    [empresas],
+  );
+
+  const filtradas = useMemo(() => {
+    return obligaciones.filter(o => {
+      if (filtroEmpresa !== 'todas' && o.empresa_id !== filtroEmpresa) return false;
+      if (filtroStatus !== 'todos' && o.status !== filtroStatus) return false;
+      return true;
+    });
+  }, [obligaciones, filtroEmpresa, filtroStatus]);
+
+  const stats = useMemo(() => {
+    const c = { pendientes: 0, presentadas: 0, vencidas: 0 };
+    for (const o of filtradas) {
+      if (o.status === 'pendiente')  c.pendientes++;
+      if (o.status === 'presentado') c.presentadas++;
+      if (o.status === 'vencido')    c.vencidas++;
+    }
+    return c;
+  }, [filtradas]);
+
+  // Agrupar por fecha_limite para renderizar timeline
+  const grupos = useMemo(() => {
+    const map = new Map<string, Obligacion[]>();
+    for (const o of filtradas) {
+      const key = o.fecha_limite;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(o);
+    }
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [filtradas]);
+
+  const navegarMes = (delta: number) => {
+    const nuevo = new Date(anio, mes + delta, 1);
+    setMes(nuevo.getMonth());
+    setAnio(nuevo.getFullYear());
+  };
+
+  const marcarPresentado = async (obligacion: Obligacion) => {
+    if (obligacion.status === 'presentado') return;
+    setActualizando(obligacion.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setActualizando(null); return; }
+
+    const { error } = await supabase
+      .from('calendario_obligaciones')
+      .update({
+        status:             'presentado',
+        fecha_presentacion: new Date().toISOString().slice(0, 10),
+        presentado_por:     user.id,
+      })
+      .eq('id', obligacion.id);
+
+    if (error) {
+      mostrarToast(`No se pudo marcar: ${error.message}`, 'err');
+    } else {
+      setObligaciones(prev => prev.map(o =>
+        o.id === obligacion.id
+          ? { ...o, status: 'presentado', fecha_presentacion: new Date().toISOString().slice(0, 10) }
+          : o
+      ));
+      mostrarToast('Marcada como presentada', 'ok');
+    }
+    setActualizando(null);
+  };
+
+  const formatoFecha = (iso: string): string => {
+    const [y, m, d] = iso.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('es-MX', {
+      weekday: 'short', day: '2-digit', month: 'short',
+    });
+  };
 
   return (
-    <div className="flex-1 p-6 max-w-4xl mx-auto w-full">
-      <div className="flex items-center justify-between mb-1">
-        <h1 className="text-xl font-bold text-[#333333]">Calendario Fiscal</h1>
-        <div className="flex gap-2">
-          <select
-            value={mes}
-            onChange={e => setMes(Number(e.target.value))}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]"
-          >
-            {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
-          </select>
-          <select
-            value={anio}
-            onChange={e => setAnio(Number(e.target.value))}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]"
-          >
-            {anios.map(a => <option key={a} value={a}>{a}</option>)}
-          </select>
+    <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${toast.tipo === 'ok' ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}`}>
+          {toast.msg}
         </div>
-      </div>
-      <p className="text-sm text-gray-400 mb-5">
-        Obligaciones fiscales para tus {empresas.length} empresa{empresas.length !== 1 ? 's' : ''} cliente
+      )}
+
+      <h1 className="text-xl font-bold text-[#333333] mb-1">Calendario fiscal</h1>
+      <p className="text-sm text-gray-400 mb-6">
+        Vencimientos ajustados por Art. 12 CFF — si el día límite cae en inhábil, se recorre al siguiente hábil
       </p>
 
-      {/* Resumen */}
-      {!loading && obligaciones.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {[
-            { label: 'Vencidas',    n: vencidas,    bg: '#FFF1F2', text: '#DC2626' },
-            { label: 'Esta semana', n: urgentes,    bg: '#FFFBEB', text: '#D97706' },
-            { label: 'Al corriente',n: alCorriente, bg: '#F0FDF4', text: '#16A34A' },
-          ].map(s => (
-            <div key={s.label} style={{ backgroundColor: s.bg }} className="rounded-xl border border-gray-100 p-4 text-center">
-              <div className="text-2xl font-bold" style={{ color: s.text }}>{s.n}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
+      {/* Controles: navegación mes + filtros */}
+      <div className="bg-white rounded-xl border border-gray-100 p-4 mb-5 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navegarMes(-1)}
+              className="w-9 h-9 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-500"
+              aria-label="Mes anterior"
+            >
+              ←
+            </button>
+            <div className="text-lg font-bold text-[#1B3A6B] min-w-[140px] text-center">
+              {MESES[mes]} {anio}
+            </div>
+            <button
+              onClick={() => navegarMes(1)}
+              className="w-9 h-9 rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-center text-gray-500"
+              aria-label="Mes siguiente"
+            >
+              →
+            </button>
+            <button
+              onClick={() => { setMes(hoy.getMonth()); setAnio(hoy.getFullYear()); }}
+              className="ml-2 text-xs font-semibold text-[#1B3A6B] hover:text-[#00A651] px-2 py-1"
+            >
+              Hoy
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={filtroEmpresa}
+              onChange={e => setFiltroEmpresa(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]"
+            >
+              <option value="todas">Todas las empresas</option>
+              {empresas.map(e => (
+                <option key={e.id} value={e.id}>{e.nombre}</option>
+              ))}
+            </select>
+            <select
+              value={filtroStatus}
+              onChange={e => setFiltroStatus(e.target.value as FiltroStatus)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]"
+            >
+              <option value="todos">Todos los estados</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="presentado">Presentadas</option>
+              <option value="vencido">Vencidas</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3 pt-2">
+          <StatCard label="Pendientes" value={stats.pendientes} color="text-yellow-600"  />
+          <StatCard label="Presentadas" value={stats.presentadas} color="text-green-600"  />
+          <StatCard label="Vencidas"   value={stats.vencidas}   color="text-red-500"    />
+        </div>
+      </div>
+
+      {/* Timeline de obligaciones */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1B3A6B]" />
+        </div>
+      ) : grupos.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
+          <div className="text-3xl mb-3">📅</div>
+          <p className="text-sm text-gray-400">
+            Sin obligaciones en {MESES[mes]} {anio}
+            {filtroEmpresa !== 'todas' && ' para esta empresa'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {grupos.map(([fecha, items]) => (
+            <div key={fecha} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+              <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                <span className="text-sm font-bold text-[#1B3A6B]">
+                  {formatoFecha(fecha)}
+                </span>
+                <span className="text-xs text-gray-400">
+                  {items.length} {items.length === 1 ? 'obligación' : 'obligaciones'}
+                </span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {items.map(o => {
+                  const empresa = empresaMap.get(o.empresa_id);
+                  const tipoInfo = TIPO_LABEL[o.tipo] ?? { label: o.tipo, color: 'bg-gray-100 text-gray-600' };
+                  const statusInfo = STATUS_BADGE[o.status];
+                  const recorrida = o.fecha_limite !== o.fecha_limite_base;
+
+                  return (
+                    <div key={o.id} className="px-5 py-4 flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${tipoInfo.color}`}>
+                            {tipoInfo.label}
+                          </span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </span>
+                          {recorrida && (
+                            <span className="text-xs text-gray-400" title={`Fecha original: ${o.fecha_limite_base}`}>
+                              · Art. 12 CFF aplicado
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-sm font-semibold text-[#333333]">{o.obligacion}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {empresa?.nombre ?? 'Empresa desconocida'}
+                          {empresa && <span className="font-mono ml-2">{empresa.rfc}</span>}
+                          {o.fecha_presentacion && (
+                            <span className="text-green-600 ml-2">
+                              · presentada el {o.fecha_presentacion}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {o.status !== 'presentado' && (
+                        <button
+                          onClick={() => marcarPresentado(o)}
+                          disabled={actualizando === o.id}
+                          className="bg-[#00A651] hover:bg-[#008F45] disabled:opacity-50 text-white text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap"
+                        >
+                          {actualizando === o.id ? '...' : 'Marcar presentada'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1B3A6B]" />
-        </div>
-      ) : empresas.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
-          <div className="text-3xl mb-3">📅</div>
-          <p className="text-sm text-gray-400">Sin empresas cliente — agrega una para ver su calendario fiscal</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {obligaciones.map((o, i) => {
-            const dias = diasRestantes(o.fechaLimite);
-            const sem  = semaforo(dias);
-            return (
-              <div key={i} className="bg-white rounded-xl border border-gray-100 p-5 flex items-start gap-4 hover:shadow-sm transition">
-                <div className="text-2xl mt-0.5">{o.icono}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-[#333333]">{o.titulo}</h3>
-                    <span
-                      className="text-xs font-bold px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: sem.bg, color: sem.text }}
-                    >
-                      {dias < 0 ? 'Vencida' : dias === 0 ? 'Hoy' : `${dias} días`}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mt-0.5">{o.descripcion}</p>
-                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Límite:</span>
-                    <span className="text-xs font-semibold" style={{ color: sem.text }}>
-                      {o.fechaLimite.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </span>
-                  </div>
-                  {o.empresas.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {o.empresas.slice(0, 5).map((emp, j) => (
-                        <span key={j} className="text-xs bg-[#EEF2FA] text-[#1B3A6B] px-2 py-0.5 rounded-full font-medium">
-                          {emp}
-                        </span>
-                      ))}
-                      {o.empresas.length > 5 && (
-                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                          +{o.empresas.length - 5} más
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="shrink-0">
-                  <div
-                    className="w-3 h-3 rounded-full mt-1"
-                    style={{ backgroundColor: sem.text }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <p className="text-xs text-gray-300 text-center mt-6">
-        Fechas calculadas conforme al artículo 12 del CFF — si el día 17 cae en sábado o domingo, el límite se recorre al lunes siguiente.
-      </p>
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-100">
+      <div className={`text-2xl font-extrabold ${color}`}>{value}</div>
+      <div className="text-xs text-gray-400 mt-0.5">{label}</div>
     </div>
   );
 }
