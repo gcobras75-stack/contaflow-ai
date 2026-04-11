@@ -96,45 +96,7 @@ export default function CFDIsPage() {
   }, { total: 0, iva: 0, pendiente: 0 });
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      <header className="bg-[#1B3A6B] text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-end gap-1">
-          <span className="text-2xl font-extrabold tracking-tight">ContaFlow</span>
-          <span className="text-lg font-bold text-[#00A651] mb-0.5">AI</span>
-        </div>
-        <nav className="hidden sm:flex items-center gap-1">
-          {[
-            { href: '/dashboard', label: 'Empresas' },
-            { href: '/dashboard/cfdis', label: 'CFDIs', active: true },
-            { href: '/dashboard/conciliacion', label: 'Conciliación' },
-            { href: '/dashboard/exportar', label: 'Exportar' },
-            { href: '/dashboard/configuracion', label: 'Configuración' },
-          ].map(item => (
-            <a key={item.href} href={item.href}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${item.active ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </header>
-
-      {/* Nav móvil */}
-      <nav className="bg-white border-b border-gray-100 px-6 flex gap-1 overflow-x-auto sm:hidden">
-        {[
-          { href: '/dashboard', label: 'Empresas' },
-          { href: '/dashboard/cfdis', label: 'CFDIs', active: true },
-          { href: '/dashboard/conciliacion', label: 'Conciliación' },
-          { href: '/dashboard/exportar', label: 'Exportar' },
-          { href: '/dashboard/configuracion', label: 'Config' },
-        ].map(item => (
-          <a key={item.href} href={item.href}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${item.active ? 'border-[#1B3A6B] text-[#1B3A6B]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            {item.label}
-          </a>
-        ))}
-      </nav>
-
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
         <h1 className="text-xl font-bold text-[#333333] mb-5">CFDIs del despacho</h1>
 
         {/* Filtros */}
@@ -239,7 +201,6 @@ export default function CFDIsPage() {
             })}
           </div>
         )}
-      </main>
     </div>
   );
 }

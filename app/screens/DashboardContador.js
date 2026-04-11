@@ -161,6 +161,16 @@ export default function DashboardContador({ onLogout, onNavigate }) {
           onPress={() => onNavigate?.('Historial')}
         />
         <MenuItem
+          icon="bulb-outline"
+          label="Estrategia Fiscal"
+          onPress={() => onNavigate?.('EstrategiaFiscal')}
+        />
+        <MenuItem
+          icon="chatbubble-ellipses-outline"
+          label="Chat con CPC Ricardo"
+          onPress={() => onNavigate?.('ChatContador')}
+        />
+        <MenuItem
           icon="analytics-outline"
           label="Conciliación"
           onPress={() => webSolo('Conciliación')}

@@ -10,10 +10,19 @@ import SubirEstadoCuenta from './screens/SubirEstadoCuenta';
 import Historial from './screens/Historial';
 import Reportes from './screens/Reportes';
 import Perfil from './screens/Perfil';
+import EstrategiaFiscal from './screens/EstrategiaFiscal';
+import ChatContador from './screens/ChatContador';
+import VincularEmpresa from './screens/VincularEmpresa';
+import SyncSAT from './screens/SyncSAT';
+import SubirCSF from './screens/SubirCSF';
+import SubirDocumento from './screens/SubirDocumento';
+import ChatCliente from './screens/ChatCliente';
+import GraficasEmpresa from './screens/GraficasEmpresa';
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [rol, setRol] = useState(null);
+  const [empresaId, setEmpresaId] = useState(null);
   const [currentScreen, setCurrentScreen] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,22 +53,33 @@ export default function App() {
   const loadRol = async (userId) => {
     const { data } = await supabase
       .from('usuarios')
-      .select('rol')
+      .select('rol, empresa_id')
       .eq('id', userId)
       .single();
-    if (data) setRol(data.rol);
+    if (data) {
+      setRol(data.rol);
+      setEmpresaId(data.empresa_id ?? null);
+    }
     setLoading(false);
   };
 
-  const handleLogin = (userRol) => {
-    setRol(userRol);
+  const handleLogin = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await loadRol(user.id);
   };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setSession(null);
     setRol(null);
+    setEmpresaId(null);
     setCurrentScreen(null);
+  };
+
+  const handleVinculado = async () => {
+    // Recargar datos del usuario tras vincularse
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) await loadRol(user.id);
   };
 
   const navigate = (screen) => setCurrentScreen(screen);
@@ -85,6 +105,16 @@ export default function App() {
     );
   }
 
+  // ── Empresa sin vincular → flujo de invitación ─────────────
+  if (rol === 'empresa' && !empresaId) {
+    return (
+      <>
+        <StatusBar style="light" />
+        <VincularEmpresa onVinculado={handleVinculado} onLogout={handleLogout} />
+      </>
+    );
+  }
+
   // ── Sesión empresa ─────────────────────────────────────────
   if (rol === 'empresa') {
     if (currentScreen === 'SubirCFDI')
@@ -97,6 +127,18 @@ export default function App() {
       return <><StatusBar style="light" /><Reportes onBack={goBack} /></>;
     if (currentScreen === 'Perfil')
       return <><StatusBar style="light" /><Perfil onBack={goBack} /></>;
+    if (currentScreen === 'SyncSAT')
+      return <><StatusBar style="light" /><SyncSAT onBack={goBack} /></>;
+    if (currentScreen === 'SubirCSF')
+      return <><StatusBar style="light" /><SubirCSF onBack={goBack} /></>;
+    if (currentScreen === 'SubirDocumento')
+      return <><StatusBar style="light" /><SubirDocumento onBack={goBack} /></>;
+    if (currentScreen === 'ChatCliente')
+      return <><StatusBar style="light" /><ChatCliente onBack={goBack} /></>;
+    if (currentScreen === 'GraficasEmpresa')
+      return <><StatusBar style="light" /><GraficasEmpresa onBack={goBack} /></>;
+    if (currentScreen === 'SubirDocumentoNota')
+      return <><StatusBar style="light" /><SubirDocumento tipoPreseleccionado="nota" onBack={goBack} /></>;
 
     return (
       <>
@@ -114,6 +156,10 @@ export default function App() {
       return <><StatusBar style="light" /><Perfil onBack={goBack} /></>;
     if (currentScreen === 'Reportes')
       return <><StatusBar style="light" /><Reportes onBack={goBack} /></>;
+    if (currentScreen === 'EstrategiaFiscal')
+      return <><StatusBar style="light" /><EstrategiaFiscal onBack={goBack} /></>;
+    if (currentScreen === 'ChatContador')
+      return <><StatusBar style="light" /><ChatContador onBack={goBack} /></>;
 
     return (
       <>

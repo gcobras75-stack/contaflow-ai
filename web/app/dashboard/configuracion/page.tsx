@@ -41,6 +41,9 @@ export default function ConfiguracionPage() {
   const [formVisible, setFormVisible] = useState(false);
   const [form, setForm] = useState({ nombre: '', rfc: '', giro: '' });
   const [guardando, setGuardando] = useState(false);
+  // Autorización obligatoria del contador al dar de alta un cliente.
+  // Sin este checkbox marcado el botón Guardar queda deshabilitado.
+  const [confirmaAutorizacion, setConfirmaAutorizacion] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -98,13 +101,18 @@ export default function ConfiguracionPage() {
       mostrarToast('Nombre y RFC son requeridos', 'err');
       return;
     }
+    if (!confirmaAutorizacion) {
+      mostrarToast('Debes confirmar que tienes autorización del cliente', 'err');
+      return;
+    }
     setGuardando(true);
-    const { data: usuario } = await supabase.auth.getUser();
-    if (!usuario?.user) { setGuardando(false); return; }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) { setGuardando(false); return; }
 
     const { data: usr } = await supabase
-      .from('usuarios').select('despacho_id').eq('id', usuario.user.id).single();
+      .from('usuarios').select('despacho_id').eq('id', session.user.id).single();
 
+    // 1. Crear empresa cliente
     const { data, error } = await supabase.from('empresas_clientes').insert({
       nombre: form.nombre.trim(),
       rfc: form.rfc.trim().toUpperCase(),
@@ -115,12 +123,44 @@ export default function ConfiguracionPage() {
 
     if (error) {
       mostrarToast(error.code === '23505' ? 'El RFC ya está registrado' : `Error: ${error.message}`, 'err');
-    } else {
-      setEmpresas(prev => [...prev, data]);
-      setForm({ nombre: '', rfc: '', giro: '' });
-      setFormVisible(false);
-      mostrarToast('Empresa agregada correctamente', 'ok');
+      setGuardando(false);
+      return;
     }
+
+    // 2. Registrar la autorización del contador atada a este cliente específico.
+    // Append-only: si falla, loguear y avisar, pero la empresa ya existe.
+    // Deuda técnica: mover a un endpoint transaccional /api/crear-empresa-cliente
+    // que haga ambas operaciones atómicamente en el servidor.
+    try {
+      const res = await fetch('/api/aceptar-legal', {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          acceptances: [{
+            code:       'autorizacion_fiel_cliente',
+            version:    '1.0',
+            empresa_id: data.id,
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        console.error('Aceptación no registrada:', j);
+        mostrarToast('Empresa creada, pero no se registró la autorización. Contacta soporte.', 'err');
+      }
+    } catch (e) {
+      console.error('Error llamando /api/aceptar-legal:', e);
+      mostrarToast('Empresa creada, pero la autorización quedó sin registrar.', 'err');
+    }
+
+    setEmpresas(prev => [...prev, data]);
+    setForm({ nombre: '', rfc: '', giro: '' });
+    setConfirmaAutorizacion(false);
+    setFormVisible(false);
+    mostrarToast('Empresa agregada correctamente', 'ok');
     setGuardando(false);
   };
 
@@ -137,21 +177,13 @@ export default function ConfiguracionPage() {
   const usadas = empresas.length;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      <header className="bg-[#1B3A6B] text-white px-6 py-4 flex items-center gap-3">
-        <a href="/dashboard" className="text-white/70 hover:text-white text-sm transition">← Dashboard</a>
-        <span className="text-white/30">|</span>
-        <span className="font-semibold">Configuración</span>
-      </header>
-
+    <div className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
       {/* Toast */}
       {toast && (
         <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${toast.tipo === 'ok' ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}`}>
           {toast.msg}
         </div>
       )}
-
-      <main className="flex-1 p-6 max-w-4xl mx-auto w-full space-y-6">
 
         {/* Plan actual */}
         <div className="bg-white rounded-xl border border-gray-100 p-6">
@@ -248,14 +280,37 @@ export default function ConfiguracionPage() {
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B3A6B]"
                 />
               </div>
+              {/* Declaración obligatoria de autorización del cliente.
+                  Sin este checkbox marcado no se puede guardar. Al guardar
+                  se registra una fila en legal_acceptances con
+                  document_code = 'autorizacion_fiel_cliente' atada al id
+                  del cliente recién creado. */}
+              <label className="flex items-start gap-3 rounded-xl border border-[#1B3A6B]/20 bg-[#F0F4FF] p-3 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={confirmaAutorizacion}
+                  onChange={e => setConfirmaAutorizacion(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 shrink-0 accent-[#00A651]"
+                />
+                <div className="flex-1 text-xs text-[#333333] leading-relaxed">
+                  Confirmo que tengo autorización escrita de este cliente para
+                  gestionar su información fiscal y usar su e.firma en ContaFlow AI.
+                  Entiendo que soy el responsable profesional ante el SAT y ante mi
+                  cliente por el uso de esta plataforma.
+                </div>
+              </label>
+
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setFormVisible(false)} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5">
+                <button
+                  onClick={() => { setFormVisible(false); setConfirmaAutorizacion(false); }}
+                  className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5"
+                >
                   Cancelar
                 </button>
                 <button
                   onClick={agregarEmpresa}
-                  disabled={guardando}
-                  className="bg-[#1B3A6B] hover:bg-[#152d55] disabled:opacity-50 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition"
+                  disabled={guardando || !confirmaAutorizacion}
+                  className="bg-[#1B3A6B] hover:bg-[#152d55] disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition"
                 >
                   {guardando ? 'Guardando...' : 'Guardar empresa'}
                 </button>
@@ -328,7 +383,6 @@ export default function ConfiguracionPage() {
           )}
         </div>
 
-      </main>
     </div>
   );
 }

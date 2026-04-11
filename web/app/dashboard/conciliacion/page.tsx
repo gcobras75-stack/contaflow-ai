@@ -203,15 +203,7 @@ export default function ConciliacionPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      {/* Header */}
-      <header className="bg-[#1B3A6B] text-white px-6 py-4 flex items-center gap-3">
-        <a href="/dashboard" className="text-white/70 hover:text-white text-sm transition">← Dashboard</a>
-        <span className="text-white/30">|</span>
-        <span className="font-semibold">Conciliación</span>
-      </header>
-
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
 
         {/* Selector empresa */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
@@ -567,7 +559,6 @@ Fecha       Concepto                        Cargo      Abono
           </div>
         )}
 
-      </main>
     </div>
   );
 }

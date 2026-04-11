@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+
 type Empresa = {
   id: string;
   nombre: string;
@@ -33,16 +34,30 @@ const SEMAFORO = {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState('');
-  const [despachoId, setDespachoId] = useState<string | null>(null);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const [resumenIA, setResumenIA] = useState<string | null>(null);
+  const [cargandoResumen, setCargandoResumen] = useState(false);
+
+  const cargarResumenIA = async (token: string) => {
+    setCargandoResumen(true);
+    try {
+      const res = await fetch('/api/resumen-ia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json() as { resumen?: string | null };
+      setResumenIA(json.resumen ?? null);
+    } catch { /* silencioso */ }
+    setCargandoResumen(false);
+  };
 
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace('/login'); return; }
-      setUserEmail(user.email ?? '');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) cargarResumenIA(session.access_token);
 
       const { data: usuario } = await supabase
         .from('usuarios')
@@ -51,7 +66,6 @@ export default function DashboardPage() {
         .single();
 
       if (!usuario?.despacho_id) { setLoading(false); return; }
-      setDespachoId(usuario.despacho_id);
 
       const { data: emps } = await supabase
         .from('empresas_clientes')
@@ -94,11 +108,6 @@ export default function DashboardPage() {
     init();
   }, [router]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.replace('/login');
-  };
-
   const counts = {
     verde: empresas.filter(e => e._semaforo === 'verde').length,
     amarillo: empresas.filter(e => e._semaforo === 'amarillo').length,
@@ -106,38 +115,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] flex flex-col">
-      {/* Header */}
-      <header className="bg-[#1B3A6B] text-white px-6 py-4 flex items-center justify-between">
-        <div className="flex items-end gap-1">
-          <span className="text-2xl font-extrabold tracking-tight">ContaFlow</span>
-          <span className="text-lg font-bold text-[#00A651] mb-0.5">AI</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-white/70 hidden sm:block">{userEmail}</span>
-          <button onClick={handleLogout} className="bg-white/10 hover:bg-white/20 text-sm text-white px-3 py-1.5 rounded-lg transition">
-            Cerrar sesión
-          </button>
-        </div>
-      </header>
-
-      {/* Nav */}
-      <nav className="bg-white border-b border-gray-100 px-6 flex gap-1 overflow-x-auto">
-        {[
-          { href: '/dashboard', label: 'Empresas', active: true },
-          { href: '/dashboard/cfdis', label: 'CFDIs' },
-          { href: '/dashboard/conciliacion', label: 'Conciliación' },
-          { href: '/dashboard/exportar', label: 'Exportar' },
-          { href: '/dashboard/configuracion', label: 'Configuración' },
-        ].map(item => (
-          <a key={item.href} href={item.href}
-            className={`px-4 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap ${item.active ? 'border-[#1B3A6B] text-[#1B3A6B]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
-            {item.label}
-          </a>
-        ))}
-      </nav>
-
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-[#333333]">Empresas cliente</h1>
           <a href="/dashboard/configuracion"
@@ -145,6 +123,23 @@ export default function DashboardPage() {
             + Agregar empresa
           </a>
         </div>
+
+        {/* Resumen IA */}
+        {(cargandoResumen || resumenIA) && (
+          <div className="bg-gradient-to-r from-[#EEF2FA] to-[#F0FDF4] border border-[#D5E0F0] rounded-xl p-4 mb-5 flex items-start gap-3">
+            <div className="w-7 h-7 rounded-lg bg-[#1B3A6B] flex items-center justify-center shrink-0 mt-0.5">
+              <span className="text-white text-xs font-bold">AI</span>
+            </div>
+            {cargandoResumen ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <span className="w-3 h-3 border-2 border-gray-300 border-t-[#1B3A6B] rounded-full animate-spin" />
+                Analizando tu despacho...
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700 leading-relaxed">{resumenIA}</p>
+            )}
+          </div>
+        )}
 
         {/* Resumen semáforo */}
         {!loading && empresas.length > 0 && (
@@ -197,7 +192,6 @@ export default function DashboardPage() {
             })}
           </div>
         )}
-      </main>
     </div>
   );
 }

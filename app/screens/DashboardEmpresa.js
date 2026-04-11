@@ -7,30 +7,32 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 
 const C = {
-  azul: '#1B3A6B',
-  verde: '#00A651',
-  blanco: '#FFFFFF',
-  gris: '#F5F5F5',
-  texto: '#333333',
-  amarillo: '#F59E0B',
-  rojo: '#EF4444',
+  azul:    '#1B3A6B',
+  verde:   '#00A651',
+  blanco:  '#FFFFFF',
+  gris:    '#F5F5F5',
+  texto:   '#333333',
+  amarillo:'#F59E0B',
+  rojo:    '#EF4444',
+  gris2:   '#6B7280',
 };
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
 export default function DashboardEmpresa({ onLogout, onNavigate }) {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [usuario, setUsuario] = useState(null);
-  const [stats, setStats] = useState({
-    cfdisEsteMes: 0,
-    cfdisPendientes: 0,
-    ultimoEstado: null,
-    ivaAFavor: 0,
-    ivaAPagar: 0,
-    sinCFDI: 0,
+  const [usuario, setUsuario]       = useState(null);
+  const [empresa, setEmpresa]       = useState(null);
+  const [stats, setStats]           = useState({
+    docsPendientes:    0,
+    cfdisEsteMes:      0,
+    proximaObligacion: null,
+    totalIngresos:     0,
+    totalEgresos:      0,
   });
+  const [suspendida, setSuspendida] = useState(false);
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -46,41 +48,62 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
 
       if (!usr?.empresa_id) { setLoading(false); setRefreshing(false); return; }
 
-      const ahora = new Date();
+      // Verificar si la suscripción de la empresa está suspendida
+      const { data: sus } = await supabase
+        .from('suscripciones')
+        .select('status')
+        .eq('empresa_id', usr.empresa_id)
+        .single();
+      if (sus?.status === 'suspendida') {
+        setSuspendida(true);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
+      // Datos de la empresa
+      const { data: emp } = await supabase
+        .from('empresas_clientes')
+        .select('nombre, rfc, giro, regimen_fiscal, fiel_disponible')
+        .eq('id', usr.empresa_id)
+        .single();
+      setEmpresa(emp);
+
+      const ahora     = new Date();
       const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
 
-      // CFDIs este mes
+      // CFDIs del mes
       const { data: cfdis } = await supabase
         .from('cfdis')
-        .select('id, tipo, iva, status, created_at')
+        .select('tipo, total, status')
         .eq('empresa_id', usr.empresa_id)
         .gte('created_at', inicioMes);
 
-      const cfdisEsteMes = cfdis?.length ?? 0;
-      const cfdisPendientes = cfdis?.filter(c => c.status === 'pendiente').length ?? 0;
+      // Documentos pendientes de revisión
+      const { count: docsPendientes } = await supabase
+        .from('documentos')
+        .select('id', { count: 'exact', head: true })
+        .eq('empresa_id', usr.empresa_id)
+        .eq('status', 'pendiente');
 
-      // IVA
-      let ivaAFavor = 0, ivaAPagar = 0;
+      const cfdisEsteMes = cfdis?.length ?? 0;
+      let totalIngresos  = 0;
+      let totalEgresos   = 0;
       cfdis?.forEach(c => {
-        if (c.tipo === 'egreso') ivaAFavor += Number(c.iva ?? 0);
-        if (c.tipo === 'ingreso') ivaAPagar += Number(c.iva ?? 0);
+        if (c.tipo === 'ingreso') totalIngresos += Number(c.total ?? 0);
+        if (c.tipo === 'egreso')  totalEgresos  += Number(c.total ?? 0);
       });
 
-      // Último estado de cuenta
-      const { data: estados } = await supabase
-        .from('estados_cuenta')
-        .select('banco, periodo, created_at, status')
-        .eq('empresa_id', usr.empresa_id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+      // Próxima obligación fiscal: día 17 del mes siguiente
+      const mesProx = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 17);
+      const diasPara = Math.ceil((mesProx.getTime() - ahora.getTime()) / 86400000);
 
       setStats({
+        docsPendientes: docsPendientes ?? 0,
         cfdisEsteMes,
-        cfdisPendientes,
-        ultimoEstado: estados?.[0] ?? null,
-        ivaAFavor: parseFloat(ivaAFavor.toFixed(2)),
-        ivaAPagar: parseFloat(ivaAPagar.toFixed(2)),
-        sinCFDI: 0,
+        proximaObligacion: { fecha: mesProx, diasPara },
+        totalIngresos,
+        totalEgresos,
       });
     } catch (e) {
       console.error('Error cargando dashboard:', e);
@@ -91,15 +114,11 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
   }, []);
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
-
   const onRefresh = () => { setRefreshing(true); cargarDatos(); };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.root}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Mi Empresa</Text>
-        </View>
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={C.azul} />
         </View>
@@ -107,14 +126,49 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
     );
   }
 
-  const ivaBalance = stats.ivaAPagar - stats.ivaAFavor;
+  // Pantalla de suspensión
+  if (suspendida) {
+    return (
+      <SafeAreaView style={[styles.root, { backgroundColor: '#0F172A' }]}>
+        <View style={styles.centrado}>
+          <View style={styles.suspView}>
+            <View style={styles.suspIcono}>
+              <Ionicons name="warning-outline" size={36} color="#F87171" />
+            </View>
+            <Text style={styles.suspTitulo}>Cuenta suspendida</Text>
+            <Text style={styles.suspMsg}>
+              El acceso ha sido suspendido por falta de pago de la suscripción mensual.
+            </Text>
+            <Text style={styles.suspPasos}>
+              Contacta a tu contador para regularizar el pago. Una vez pagado, el acceso se restaura automáticamente.
+            </Text>
+            <TouchableOpacity
+              style={styles.suspBtnReintentar}
+              onPress={() => { setSuspendida(false); setLoading(true); cargarDatos(); }}
+            >
+              <Text style={styles.suspBtnReintentarTxt}>Ya pagué — Reintentar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.suspBtnLogout} onPress={onLogout}>
+              <Text style={styles.suspBtnLogoutTxt}>Cerrar sesión</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const nombre = usuario?.nombre?.split(' ')[0] ?? 'Bienvenido';
 
   return (
     <SafeAreaView style={styles.root}>
+
+      {/* ── Header ───────────────────────────────────────────── */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>Bienvenido</Text>
-          <Text style={styles.headerTitle}>{usuario?.nombre ?? 'Mi Empresa'}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerSaludo}>Hola, {nombre} 👋</Text>
+          {empresa && (
+            <Text style={styles.headerEmpresa} numberOfLines={1}>{empresa.nombre}</Text>
+          )}
         </View>
         <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
           <Ionicons name="log-out-outline" size={22} color={C.blanco} />
@@ -123,155 +177,308 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.azul} />}
       >
-        {/* Acciones rápidas */}
-        <View style={styles.accionesRow}>
-          <TouchableOpacity style={styles.accionBtn} onPress={() => onNavigate?.('SubirCFDI')}>
-            <Ionicons name="document-text" size={22} color={C.blanco} />
-            <Text style={styles.accionTxt}>Subir CFDI</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.accionBtn, { backgroundColor: C.azul }]} onPress={() => onNavigate?.('SubirEstadoCuenta')}>
-            <Ionicons name="card" size={22} color={C.blanco} />
-            <Text style={styles.accionTxt}>Estado de Cuenta</Text>
-          </TouchableOpacity>
-        </View>
 
-        {/* Sin empresa configurada */}
+        {/* ── Sin empresa vinculada ─────────────────────────── */}
         {!usuario?.empresa_id && (
           <View style={styles.alertaBox}>
             <Ionicons name="information-circle-outline" size={20} color="#92400E" />
             <Text style={styles.alertaTxt}>
-              Tu cuenta aún no tiene una empresa asignada. Contacta a tu despacho contable.
+              Tu cuenta no está vinculada a ninguna empresa. Contacta a tu contador.
             </Text>
           </View>
         )}
 
-        {/* Tarjetas estadísticas */}
-        <Text style={styles.seccionTitulo}>Resumen del mes</Text>
-        <View style={styles.statsGrid}>
-          <StatCard
-            icon="document-text-outline"
-            label="CFDIs este mes"
-            valor={String(stats.cfdisEsteMes)}
-            sub={`${stats.cfdisPendientes} pendientes`}
-            color={C.azul}
-          />
-          <StatCard
-            icon="card-outline"
-            label="Último estado"
-            valor={stats.ultimoEstado?.banco ?? '—'}
-            sub={stats.ultimoEstado?.periodo ?? 'Sin registros'}
-            color="#6366F1"
-          />
-          <StatCard
-            icon="trending-up-outline"
-            label="IVA a pagar"
-            valor={fmt(stats.ivaAPagar)}
-            sub="IVA de ingresos"
-            color={C.rojo}
-          />
-          <StatCard
-            icon="trending-down-outline"
-            label="IVA a favor"
-            valor={fmt(stats.ivaAFavor)}
-            sub="IVA de egresos"
-            color={C.verde}
-          />
+        {/* ── TAREA 1: Botón azul "Ver mis estadísticas" ───── */}
+        <TouchableOpacity
+          style={styles.btnEstadisticas}
+          onPress={() => onNavigate?.('GraficasEmpresa')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.btnEstadisticasIcono}>
+            <Ionicons name="bar-chart-outline" size={28} color={C.blanco} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.btnEstadisticasTitulo}>Ver mis estadísticas</Text>
+            <Text style={styles.btnEstadisticasSub}>Ingresos, tendencias y salud fiscal</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
+
+        {/* ── Próxima obligación fiscal ─────────────────────── */}
+        {stats.proximaObligacion && (
+          <View style={[styles.obligacionBox,
+            stats.proximaObligacion.diasPara <= 7 ? styles.obligacionUrgente : styles.obligacionNormal]}>
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color={stats.proximaObligacion.diasPara <= 7 ? C.rojo : C.amarillo}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.obligacionTitulo}>Próxima declaración</Text>
+              <Text style={styles.obligacionFecha}>
+                {stats.proximaObligacion.fecha.toLocaleDateString('es-MX', {
+                  day: 'numeric', month: 'long',
+                })}
+                {' · '}
+                {stats.proximaObligacion.diasPara > 0
+                  ? `en ${stats.proximaObligacion.diasPara} días`
+                  : 'hoy'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Tarjetas resumen ──────────────────────────────── */}
+        <Text style={styles.seccion}>Resumen del mes</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Ionicons name="arrow-up-circle-outline" size={22} color={C.verde} />
+            <Text style={styles.statVal}>{fmt(stats.totalIngresos)}</Text>
+            <Text style={styles.statLbl}>Ingresos</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Ionicons name="arrow-down-circle-outline" size={22} color={C.rojo} />
+            <Text style={styles.statVal}>{fmt(stats.totalEgresos)}</Text>
+            <Text style={styles.statLbl}>Egresos</Text>
+          </View>
         </View>
 
-        {/* Balance IVA */}
-        {(stats.ivaAPagar > 0 || stats.ivaAFavor > 0) && (
-          <View style={[styles.ivaBalance, { borderLeftColor: ivaBalance > 0 ? C.rojo : C.verde }]}>
-            <Text style={styles.ivaBalanceLbl}>Balance IVA neto:</Text>
-            <Text style={[styles.ivaBalanceVal, { color: ivaBalance > 0 ? C.rojo : C.verde }]}>
-              {ivaBalance > 0 ? 'A pagar ' : 'A favor '}{fmt(Math.abs(ivaBalance))}
-            </Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Ionicons name="document-text-outline" size={22} color={C.azul} />
+            <Text style={styles.statVal}>{stats.cfdisEsteMes}</Text>
+            <Text style={styles.statLbl}>Facturas del mes</Text>
           </View>
-        )}
+          <View style={[styles.statCard, stats.docsPendientes > 0 && styles.statCardAlerta]}>
+            <Ionicons
+              name="time-outline"
+              size={22}
+              color={stats.docsPendientes > 0 ? C.amarillo : C.gris2}
+            />
+            <Text style={[styles.statVal, stats.docsPendientes > 0 && { color: C.amarillo }]}>
+              {stats.docsPendientes}
+            </Text>
+            <Text style={styles.statLbl}>Docs en revisión</Text>
+          </View>
+        </View>
 
-        {/* Menú navegación */}
-        <Text style={styles.seccionTitulo}>Módulos</Text>
-        <MenuItem icon="time-outline" label="Historial de CFDIs" onPress={() => onNavigate?.('Historial')} />
-        <MenuItem icon="bar-chart-outline" label="Reportes" onPress={() => onNavigate?.('Reportes')} />
-        <MenuItem icon="person-outline" label="Mi Perfil" onPress={() => onNavigate?.('Perfil')} />
+        {/* ── MIS DOCUMENTOS ────────────────────────────────── */}
+        <Text style={styles.seccion}>Mis documentos</Text>
+
+        <MenuItem
+          icon="document-text-outline"
+          color="#3B82F6"
+          label="Mis facturas (CFDIs)"
+          sub="Historial de facturas electrónicas"
+          onPress={() => onNavigate?.('Historial')}
+        />
+        <MenuItem
+          icon="card-outline"
+          color={C.amarillo}
+          label="Estado de cuenta"
+          sub="Subir estado de cuenta bancario"
+          onPress={() => onNavigate?.('SubirEstadoCuenta')}
+        />
+        <MenuItem
+          icon="receipt-outline"
+          color="#8B5CF6"
+          label="Subir CFDI (XML)"
+          sub="Facturas electrónicas en formato XML"
+          onPress={() => onNavigate?.('SubirCFDI')}
+        />
+
+        {/* TAREA 2: Subir nota */}
+        <MenuItem
+          icon="document-text-outline"
+          color="#F97316"
+          label="Subir nota"
+          sub="Notas, tickets, recibos simples"
+          onPress={() => onNavigate?.('SubirDocumentoNota')}
+        />
+
+        {/* ── TAREA 3: MI ASESOR FISCAL ────────────────────── */}
+        <Text style={styles.seccion}>Mi asesor fiscal</Text>
+
+        <TouchableOpacity
+          style={styles.btnAsesorFiscal}
+          onPress={() => onNavigate?.('ChatCliente')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.btnAsesorFiscalIcono}>
+            <Text style={{ fontSize: 22 }}>🤖</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.btnAsesorFiscalTitulo}>Chat con tu Contador</Text>
+            <Text style={styles.btnAsesorFiscalSub}>Pregunta sobre tus impuestos</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={C.azul} />
+        </TouchableOpacity>
+
+        {/* ── MI EMPRESA ────────────────────────────────────── */}
+        <Text style={styles.seccion}>Mi empresa</Text>
+
+        <MenuItem
+          icon="cloud-download-outline"
+          color={C.azul}
+          label="Sincronizar con el SAT"
+          sub="Descargar mis facturas del portal SAT"
+          onPress={() => onNavigate?.('SyncSAT')}
+          disabled={!empresa?.fiel_disponible}
+          disabledNote={!empresa?.fiel_disponible ? 'Tu contador debe configurar la e.firma' : null}
+        />
+        <MenuItem
+          icon="document-attach-outline"
+          color="#10B981"
+          label="Constancia Fiscal (CSF)"
+          sub="Subir o actualizar mi Constancia de Situación Fiscal"
+          onPress={() => onNavigate?.('SubirCSF')}
+        />
+        <MenuItem
+          icon="person-outline"
+          color={C.gris2}
+          label="Mi Perfil"
+          onPress={() => onNavigate?.('Perfil')}
+        />
+
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const StatCard = ({ icon, label, valor, sub, color }) => (
-  <View style={styles.statCard}>
-    <View style={[styles.statIcon, { backgroundColor: color + '15' }]}>
-      <Ionicons name={icon} size={20} color={color} />
-    </View>
-    <Text style={styles.statValor}>{valor}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-    <Text style={styles.statSub}>{sub}</Text>
-  </View>
-);
+// ── Componentes ────────────────────────────────────────────
 
-const MenuItem = ({ icon, label, onPress }) => (
-  <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
-    <View style={styles.menuIcon}>
-      <Ionicons name={icon} size={24} color={C.azul} />
+const MenuItem = ({ icon, color, label, sub, onPress, disabled, disabledNote }) => (
+  <TouchableOpacity
+    style={[styles.menuItem, disabled && styles.menuItemDisabled]}
+    onPress={disabled ? null : onPress}
+    activeOpacity={disabled ? 1 : 0.7}
+  >
+    <View style={[styles.menuIcono, { backgroundColor: color + '18' }]}>
+      <Ionicons name={icon} size={22} color={disabled ? '#9CA3AF' : color} />
     </View>
-    <Text style={styles.menuLabel}>{label}</Text>
-    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+    <View style={{ flex: 1 }}>
+      <Text style={[styles.menuLabel, disabled && { color: '#9CA3AF' }]}>{label}</Text>
+      {(sub || disabledNote) && (
+        <Text style={[styles.menuSub, disabledNote && { color: C.amarillo }]}>
+          {disabledNote ?? sub}
+        </Text>
+      )}
+    </View>
+    {!disabled && <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />}
   </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.gris },
+  root:    { flex: 1, backgroundColor: C.gris },
+  centrado:{ flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scroll:  { flex: 1 },
+  content: { padding: 16, gap: 10, paddingBottom: 32 },
+
   header: {
-    backgroundColor: C.azul, paddingHorizontal: 20,
-    paddingTop: 16, paddingBottom: 20,
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: C.azul,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20,
+    flexDirection: 'row', alignItems: 'center',
   },
-  headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12 },
-  headerTitle: { color: C.blanco, fontSize: 20, fontWeight: '700' },
-  logoutBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: 8 },
-  centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 10 },
-  accionesRow: { flexDirection: 'row', gap: 10 },
-  accionBtn: {
-    flex: 1, backgroundColor: C.verde, borderRadius: 12,
-    paddingVertical: 14, alignItems: 'center', gap: 6,
-  },
-  accionTxt: { color: C.blanco, fontWeight: '700', fontSize: 12 },
+  headerSaludo:  { color: C.blanco, fontSize: 20, fontWeight: '700' },
+  headerEmpresa: { color: 'rgba(255,255,255,0.65)', fontSize: 12, marginTop: 2 },
+  logoutBtn:     { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: 8 },
+
   alertaBox: {
     flexDirection: 'row', backgroundColor: '#FEF3C7',
-    borderRadius: 10, padding: 12, gap: 8,
+    borderRadius: 12, padding: 14, gap: 10, alignItems: 'flex-start',
   },
-  alertaTxt: { color: '#92400E', fontSize: 12, flex: 1, lineHeight: 18 },
-  seccionTitulo: { fontSize: 14, fontWeight: '700', color: '#6B7280', marginTop: 4 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  alertaTxt: { color: '#92400E', fontSize: 13, flex: 1, lineHeight: 19 },
+
+  // ── Botón azul estadísticas (reemplaza verde)
+  btnEstadisticas: {
+    backgroundColor: C.azul, borderRadius: 18, padding: 18,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    shadowColor: C.azul, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+  },
+  btnEstadisticasIcono: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
+  btnEstadisticasTitulo: { color: C.blanco, fontSize: 16, fontWeight: '700' },
+  btnEstadisticasSub:    { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 },
+
+  // Próxima obligación
+  obligacionBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 12, padding: 14, borderWidth: 1,
+  },
+  obligacionNormal:  { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
+  obligacionUrgente: { backgroundColor: '#FFF1F2', borderColor: '#FECDD3' },
+  obligacionTitulo:  { fontSize: 12, fontWeight: '700', color: C.gris2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  obligacionFecha:   { fontSize: 14, fontWeight: '600', color: C.texto, marginTop: 2 },
+
+  // Stats
+  seccion:  { fontSize: 12, fontWeight: '700', color: C.gris2, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6 },
+  statsRow: { flexDirection: 'row', gap: 10 },
   statCard: {
-    backgroundColor: C.blanco, borderRadius: 12, padding: 14,
-    width: '47%', shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-  },
-  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  statValor: { fontSize: 18, fontWeight: '700', color: C.texto },
-  statLabel: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  statSub: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
-  ivaBalance: {
-    backgroundColor: C.blanco, borderRadius: 10, padding: 14,
-    borderLeftWidth: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-  },
-  ivaBalanceLbl: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
-  ivaBalanceVal: { fontSize: 15, fontWeight: '700' },
-  menuItem: {
-    backgroundColor: C.blanco, borderRadius: 12, padding: 16,
-    flexDirection: 'row', alignItems: 'center',
+    flex: 1, backgroundColor: C.blanco, borderRadius: 14, padding: 14,
+    alignItems: 'flex-start', gap: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  menuIcon: {
-    width: 40, height: 40, borderRadius: 10,
-    backgroundColor: '#EEF2FA', alignItems: 'center', justifyContent: 'center', marginRight: 14,
+  statCardAlerta: { backgroundColor: '#FFFBEB' },
+  statVal:  { fontSize: 17, fontWeight: '700', color: C.texto },
+  statLbl:  { fontSize: 11, color: C.gris2 },
+
+  // ── Asesor fiscal (TAREA 3) — fondo azul claro
+  btnAsesorFiscal: {
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1, borderColor: '#BFDBFE',
+    borderRadius: 14, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
   },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: C.texto },
+  btnAsesorFiscalIcono: {
+    width: 42, height: 42, borderRadius: 11,
+    backgroundColor: '#DBEAFE', alignItems: 'center', justifyContent: 'center',
+  },
+  btnAsesorFiscalTitulo: { color: '#1E3A8A', fontSize: 14, fontWeight: '700' },
+  btnAsesorFiscalSub:    { color: '#3B82F6', fontSize: 11, marginTop: 2 },
+
+  // Menú
+  menuItem: {
+    backgroundColor: C.blanco, borderRadius: 14, padding: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 4, elevation: 2,
+  },
+  menuItemDisabled: { opacity: 0.6 },
+  menuIcono: { width: 42, height: 42, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  menuLabel: { fontSize: 14, fontWeight: '600', color: C.texto },
+  menuSub:   { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
+
+  // Suspensión
+  suspView: {
+    margin: 24, padding: 32, borderRadius: 20,
+    backgroundColor: '#1E293B', borderWidth: 1, borderColor: '#334155',
+    alignItems: 'center',
+  },
+  suspIcono: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#7F1D1D30', borderWidth: 2, borderColor: '#7F1D1D',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 20,
+  },
+  suspTitulo:  { fontSize: 20, fontWeight: '700', color: '#F1F5F9', marginBottom: 12, textAlign: 'center' },
+  suspMsg:     { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 22, marginBottom: 8 },
+  suspPasos:   { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 20, marginBottom: 28 },
+  suspBtnReintentar: {
+    backgroundColor: '#1D4ED8', borderRadius: 12, paddingVertical: 14,
+    paddingHorizontal: 24, width: '100%', alignItems: 'center', marginBottom: 10,
+  },
+  suspBtnReintentarTxt: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  suspBtnLogout: {
+    borderRadius: 12, paddingVertical: 13, paddingHorizontal: 24,
+    width: '100%', alignItems: 'center', borderWidth: 1, borderColor: '#334155',
+  },
+  suspBtnLogoutTxt: { color: '#64748B', fontWeight: '500', fontSize: 14 },
 });
