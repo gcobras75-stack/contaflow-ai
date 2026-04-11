@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ScrollView, ActivityIndicator, RefreshControl,
+  ScrollView, ActivityIndicator, RefreshControl, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LineChart } from 'react-native-chart-kit';
 import { supabase } from '../lib/supabase';
 
 const C = {
@@ -15,6 +16,7 @@ const C = {
   amarillo: '#F59E0B',
   rojo: '#EF4444',
   morado: '#7C3AED',
+  gris2: '#6B7280',
 };
 
 const MESES_LABEL = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
@@ -22,6 +24,13 @@ const MESES_LABEL = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
 
 const fmt = (n) =>
   Number(n ?? 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+
+const fmtCompact = (n) => {
+  const v = Number(n ?? 0);
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(v) >= 1_000)     return `$${(v / 1_000).toFixed(1)}K`;
+  return `$${v.toFixed(0)}`;
+};
 
 function construirResumenMensual(cfdis) {
   const hoy = new Date();
@@ -54,21 +63,85 @@ function construirResumenMensual(cfdis) {
   return meses;
 }
 
-const BarraSimple = ({ valor, maximo, color }) => {
-  const pct = maximo > 0 ? Math.max(4, (valor / maximo) * 100) : 4;
-  return (
-    <View style={styles.barraFondo}>
-      <View style={[styles.barraRelleno, { width: `${pct}%`, backgroundColor: color }]} />
-    </View>
-  );
+/**
+ * Agrupa CFDIs por contraparte (emisor o receptor) y devuelve top 5.
+ * @param {Array} cfdis - lista de CFDIs
+ * @param {'ingreso'|'egreso'} tipo - 'ingreso' = top clientes (rfc_receptor),
+ *                                    'egreso'  = top proveedores (rfc_emisor)
+ */
+function top5PorContraparte(cfdis, tipo) {
+  const mapa = new Map();
+  for (const c of cfdis) {
+    if (c.tipo !== tipo) continue;
+    const rfc = tipo === 'ingreso' ? c.rfc_receptor : c.rfc_emisor;
+    if (!rfc) continue;
+    const prev = mapa.get(rfc) ?? { rfc, total: 0, count: 0 };
+    prev.total += Number(c.total ?? 0);
+    prev.count += 1;
+    mapa.set(rfc, prev);
+  }
+  return Array.from(mapa.values())
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+}
+
+const screenWidth = Dimensions.get('window').width;
+
+const chartConfig = {
+  backgroundColor: '#FFFFFF',
+  backgroundGradientFrom: '#FFFFFF',
+  backgroundGradientTo: '#FFFFFF',
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(27, 58, 107, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+  style: { borderRadius: 12 },
+  propsForDots: { r: '4', strokeWidth: '2', stroke: '#1B3A6B' },
+  propsForBackgroundLines: { stroke: '#E5E7EB', strokeDasharray: '0' },
 };
 
 export default function Reportes({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [rol, setRol] = useState(null);
+
+  // Selector de empresa (solo para rol contador)
+  const [empresas, setEmpresas] = useState([]);
+  const [empresaSel, setEmpresaSel] = useState(null); // null = todas las del despacho
+
+  // Datos del reporte
   const [resumen, setResumen] = useState([]);
   const [totales, setTotales] = useState({ ingresos: 0, egresos: 0, iva: 0, count: 0 });
-  const [rol, setRol] = useState(null);
+  const [topClientes, setTopClientes] = useState([]);
+  const [topProveedores, setTopProveedores] = useState([]);
+
+  // Carga inicial del usuario + empresas (si es contador)
+  useEffect(() => {
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: usr } = await supabase
+        .from('usuarios')
+        .select('rol, empresa_id, despacho_id')
+        .eq('id', user.id)
+        .single();
+
+      setRol(usr?.rol ?? null);
+
+      if (usr?.rol === 'contador' && usr?.despacho_id) {
+        const { data } = await supabase
+          .from('empresas_clientes')
+          .select('id, nombre, rfc')
+          .eq('despacho_id', usr.despacho_id)
+          .eq('activa', true)
+          .order('nombre');
+        setEmpresas(data ?? []);
+      } else if (usr?.rol === 'empresa' && usr?.empresa_id) {
+        setEmpresaSel(usr.empresa_id);
+      }
+    }
+    init();
+  }, []);
 
   const cargarDatos = useCallback(async () => {
     try {
@@ -81,7 +154,7 @@ export default function Reportes({ onBack }) {
         .eq('id', user.id)
         .single();
 
-      setRol(usr?.rol);
+      if (!usr) return;
 
       const inicioRango = new Date();
       inicioRango.setMonth(inicioRango.getMonth() - 5);
@@ -89,17 +162,36 @@ export default function Reportes({ onBack }) {
 
       let query = supabase
         .from('cfdis')
-        .select('tipo, total, iva, subtotal, fecha_emision, created_at, status')
+        .select('tipo, total, iva, subtotal, fecha_emision, created_at, rfc_emisor, rfc_receptor, empresa_id, status')
         .gte('created_at', inicioRango.toISOString());
 
-      if (usr?.rol === 'empresa' && usr?.empresa_id) {
+      if (usr.rol === 'empresa' && usr.empresa_id) {
         query = query.eq('empresa_id', usr.empresa_id);
+      } else if (usr.rol === 'contador' && usr.despacho_id) {
+        if (empresaSel) {
+          query = query.eq('empresa_id', empresaSel);
+        } else {
+          // Sin empresa seleccionada → agregar todas las del despacho
+          const ids = empresas.map(e => e.id);
+          if (ids.length > 0) {
+            query = query.in('empresa_id', ids);
+          } else {
+            // No hay empresas todavía (carga inicial aún no terminó)
+            setResumen(construirResumenMensual([]));
+            setTotales({ ingresos: 0, egresos: 0, iva: 0, count: 0 });
+            setTopClientes([]);
+            setTopProveedores([]);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+          }
+        }
       }
 
       const { data: cfdis } = await query;
       const datos = cfdis ?? [];
-      const meses = construirResumenMensual(datos);
 
+      const meses = construirResumenMensual(datos);
       const tot = datos.reduce((acc, c) => {
         acc.count++;
         acc.iva += Number(c.iva ?? 0);
@@ -110,20 +202,39 @@ export default function Reportes({ onBack }) {
 
       setResumen(meses);
       setTotales(tot);
+      setTopClientes(top5PorContraparte(datos, 'ingreso'));
+      setTopProveedores(top5PorContraparte(datos, 'egreso'));
     } catch (e) {
       console.error('Error cargando reportes:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [empresaSel, empresas]);
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
   const onRefresh = () => { setRefreshing(true); cargarDatos(); };
 
-  const maxIngreso = Math.max(...resumen.map(m => m.ingresos), 1);
-  const maxEgreso = Math.max(...resumen.map(m => m.egresos), 1);
   const balance = totales.ingresos - totales.egresos;
+  const empresaActual = empresas.find(e => e.id === empresaSel);
+
+  // Data para LineChart
+  const chartData = {
+    labels: resumen.map(m => m.label),
+    datasets: [
+      {
+        data: resumen.map(m => m.ingresos),
+        color: () => C.verde,
+        strokeWidth: 2,
+      },
+      {
+        data: resumen.map(m => m.egresos),
+        color: () => C.rojo,
+        strokeWidth: 2,
+      },
+    ],
+    legend: ['Ingresos', 'Egresos'],
+  };
 
   if (loading) {
     return (
@@ -152,7 +263,7 @@ export default function Reportes({ onBack }) {
           </TouchableOpacity>
         )}
         <Text style={styles.headerTitle}>Reportes</Text>
-        <Text style={styles.headerSub}>Últimos 6 meses</Text>
+        <Text style={styles.headerSub}>6 meses</Text>
       </View>
 
       <ScrollView
@@ -160,32 +271,44 @@ export default function Reportes({ onBack }) {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.azul} />}
       >
+        {/* Selector de empresa para contador */}
+        {rol === 'contador' && empresas.length > 0 && (
+          <View style={styles.selectorBox}>
+            <Text style={styles.selectorLbl}>Cliente</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setEmpresaSel(null)}
+                style={[styles.chip, empresaSel === null && styles.chipActive]}
+              >
+                <Text style={[styles.chipTxt, empresaSel === null && styles.chipTxtActive]}>Todos</Text>
+              </TouchableOpacity>
+              {empresas.map(e => (
+                <TouchableOpacity
+                  key={e.id}
+                  onPress={() => setEmpresaSel(e.id)}
+                  style={[styles.chip, empresaSel === e.id && styles.chipActive]}
+                >
+                  <Text
+                    style={[styles.chipTxt, empresaSel === e.id && styles.chipTxtActive]}
+                    numberOfLines={1}
+                  >
+                    {e.nombre}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            {empresaActual && (
+              <Text style={styles.selectorRfc}>{empresaActual.rfc}</Text>
+            )}
+          </View>
+        )}
+
         {/* Tarjetas resumen */}
         <View style={styles.grid}>
-          <TarjetaStat
-            icon="trending-up-outline"
-            label="Ingresos"
-            valor={fmt(totales.ingresos)}
-            color={C.verde}
-          />
-          <TarjetaStat
-            icon="trending-down-outline"
-            label="Egresos"
-            valor={fmt(totales.egresos)}
-            color={C.rojo}
-          />
-          <TarjetaStat
-            icon="receipt-outline"
-            label="IVA total"
-            valor={fmt(totales.iva)}
-            color={C.morado}
-          />
-          <TarjetaStat
-            icon="document-text-outline"
-            label="CFDIs"
-            valor={String(totales.count)}
-            color={C.azul}
-          />
+          <TarjetaStat icon="trending-up-outline" label="Ingresos" valor={fmtCompact(totales.ingresos)} color={C.verde} />
+          <TarjetaStat icon="trending-down-outline" label="Egresos" valor={fmtCompact(totales.egresos)} color={C.rojo} />
+          <TarjetaStat icon="receipt-outline" label="IVA" valor={fmtCompact(totales.iva)} color={C.morado} />
+          <TarjetaStat icon="document-text-outline" label="CFDIs" valor={String(totales.count)} color={C.azul} />
         </View>
 
         {/* Balance */}
@@ -196,74 +319,84 @@ export default function Reportes({ onBack }) {
           </Text>
         </View>
 
-        {/* Gráfica por mes */}
+        {/* Line chart de ingresos vs egresos */}
         <Text style={styles.seccionTitulo}>Actividad mensual</Text>
-        <View style={styles.graficaCard}>
-          {/* Leyenda */}
-          <View style={styles.leyenda}>
-            <View style={styles.leyendaItem}>
-              <View style={[styles.leyendaDot, { backgroundColor: C.verde }]} />
-              <Text style={styles.leyendaTxt}>Ingresos</Text>
-            </View>
-            <View style={styles.leyendaItem}>
-              <View style={[styles.leyendaDot, { backgroundColor: C.rojo }]} />
-              <Text style={styles.leyendaTxt}>Egresos</Text>
-            </View>
-          </View>
-
-          {resumen.map((mes) => (
-            <View key={mes.key} style={styles.mesRow}>
-              <Text style={styles.mesLabel}>{mes.label}</Text>
-              <View style={styles.barrasCol}>
-                <BarraSimple valor={mes.ingresos} maximo={maxIngreso} color={C.verde} />
-                <BarraSimple valor={mes.egresos} maximo={maxEgreso} color={C.rojo} />
-              </View>
-              <View style={styles.mesCifras}>
-                <Text style={[styles.mesCifra, { color: C.verde }]} numberOfLines={1}>
-                  {mes.ingresos > 0 ? fmt(mes.ingresos) : '—'}
-                </Text>
-                <Text style={[styles.mesCifra, { color: C.rojo }]} numberOfLines={1}>
-                  {mes.egresos > 0 ? fmt(mes.egresos) : '—'}
-                </Text>
-              </View>
-            </View>
-          ))}
-
-          {totales.count === 0 && (
-            <View style={styles.sinDatos}>
-              <Ionicons name="bar-chart-outline" size={40} color="#D1D5DB" />
-              <Text style={styles.sinDatosTxt}>Sin CFDIs en los últimos 6 meses</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Desglose mensual */}
-        <Text style={styles.seccionTitulo}>Desglose por mes</Text>
-        {resumen.filter(m => m.count > 0).length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTxt}>Sin datos registrados</Text>
+        {totales.count === 0 ? (
+          <View style={styles.sinDatos}>
+            <Ionicons name="bar-chart-outline" size={40} color="#D1D5DB" />
+            <Text style={styles.sinDatosTxt}>Sin CFDIs en los últimos 6 meses</Text>
           </View>
         ) : (
-          resumen.map(mes => mes.count > 0 && (
-            <View key={mes.key} style={styles.desgloseCard}>
-              <View style={styles.desgloseHeader}>
-                <Text style={styles.desgloseMes}>{mes.label} {mes.key.slice(0, 4)}</Text>
-                <Text style={styles.desgloseCount}>{mes.count} CFDIs</Text>
+          <View style={styles.chartCard}>
+            <LineChart
+              data={chartData}
+              width={screenWidth - 64}
+              height={220}
+              chartConfig={chartConfig}
+              bezier
+              style={{ borderRadius: 12 }}
+              yAxisLabel="$"
+              yAxisInterval={1}
+              formatYLabel={(y) => {
+                const n = Number(y);
+                if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
+                if (Math.abs(n) >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
+                return String(n);
+              }}
+            />
+          </View>
+        )}
+
+        {/* Top 5 clientes */}
+        <Text style={styles.seccionTitulo}>Top 5 clientes (por ingresos)</Text>
+        {topClientes.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTxt}>Sin ingresos registrados</Text>
+          </View>
+        ) : (
+          <View style={styles.topCard}>
+            {topClientes.map((c, idx) => (
+              <View
+                key={c.rfc}
+                style={[styles.topRow, idx < topClientes.length - 1 && styles.topDivider]}
+              >
+                <View style={[styles.topRank, { backgroundColor: '#E8F7EF' }]}>
+                  <Text style={[styles.topRankTxt, { color: C.verde }]}>{idx + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.topRfc}>{c.rfc}</Text>
+                  <Text style={styles.topCount}>{c.count} factura{c.count !== 1 ? 's' : ''}</Text>
+                </View>
+                <Text style={[styles.topMonto, { color: C.verde }]}>{fmtCompact(c.total)}</Text>
               </View>
-              <View style={styles.desgloseRow}>
-                <Text style={styles.desgloseLbl}>Ingresos</Text>
-                <Text style={[styles.desgloseVal, { color: C.verde }]}>{fmt(mes.ingresos)}</Text>
+            ))}
+          </View>
+        )}
+
+        {/* Top 5 proveedores */}
+        <Text style={styles.seccionTitulo}>Top 5 proveedores (por egresos)</Text>
+        {topProveedores.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyTxt}>Sin egresos registrados</Text>
+          </View>
+        ) : (
+          <View style={styles.topCard}>
+            {topProveedores.map((p, idx) => (
+              <View
+                key={p.rfc}
+                style={[styles.topRow, idx < topProveedores.length - 1 && styles.topDivider]}
+              >
+                <View style={[styles.topRank, { backgroundColor: '#FEF2F2' }]}>
+                  <Text style={[styles.topRankTxt, { color: C.rojo }]}>{idx + 1}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.topRfc}>{p.rfc}</Text>
+                  <Text style={styles.topCount}>{p.count} factura{p.count !== 1 ? 's' : ''}</Text>
+                </View>
+                <Text style={[styles.topMonto, { color: C.rojo }]}>{fmtCompact(p.total)}</Text>
               </View>
-              <View style={styles.desgloseRow}>
-                <Text style={styles.desgloseLbl}>Egresos</Text>
-                <Text style={[styles.desgloseVal, { color: C.rojo }]}>{fmt(mes.egresos)}</Text>
-              </View>
-              <View style={[styles.desgloseRow, styles.desgloseDivider]}>
-                <Text style={styles.desgloseLbl}>IVA</Text>
-                <Text style={styles.desgloseVal}>{fmt(mes.iva)}</Text>
-              </View>
-            </View>
-          ))
+            ))}
+          </View>
         )}
 
         <View style={{ height: 24 }} />
@@ -285,8 +418,8 @@ const TarjetaStat = ({ icon, label, valor, color }) => (
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.gris },
   header: {
-    backgroundColor: C.azul, paddingHorizontal: 20,
-    paddingTop: 16, paddingBottom: 20,
+    backgroundColor: C.azul,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20,
     flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   backBtn: { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, padding: 6 },
@@ -298,63 +431,88 @@ const styles = StyleSheet.create({
   },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, gap: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  statCard: {
-    backgroundColor: C.blanco, borderRadius: 12, padding: 14,
-    width: '47%',
+  scrollContent: { padding: 16, gap: 14 },
+
+  // Selector de empresa
+  selectorBox: {
+    backgroundColor: C.blanco, borderRadius: 12, padding: 12, gap: 8,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  statIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  selectorLbl: {
+    fontSize: 11, color: C.gris2, textTransform: 'uppercase',
+    letterSpacing: 0.5, fontWeight: '700',
+  },
+  selectorRfc: {
+    fontSize: 11, color: C.gris2, fontFamily: 'monospace', marginTop: 2,
+  },
+  chip: {
+    backgroundColor: '#F3F4F6', borderRadius: 16,
+    paddingHorizontal: 12, paddingVertical: 7,
+    maxWidth: 160,
+  },
+  chipActive: { backgroundColor: C.azul },
+  chipTxt: { fontSize: 12, color: C.gris2, fontWeight: '600' },
+  chipTxtActive: { color: C.blanco },
+
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  statCard: {
+    backgroundColor: C.blanco, borderRadius: 12, padding: 14, width: '47%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  statIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+  },
   statValor: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  statLabel: { fontSize: 11, color: '#6B7280' },
+  statLabel: { fontSize: 11, color: C.gris2 },
+
   balanceBox: {
     backgroundColor: C.blanco, borderRadius: 12, padding: 16,
-    borderLeftWidth: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+    borderLeftWidth: 4,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  balanceLbl: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  balanceLbl: { fontSize: 13, color: C.gris2, fontWeight: '500' },
   balanceVal: { fontSize: 18, fontWeight: '700' },
-  seccionTitulo: { fontSize: 13, fontWeight: '700', color: '#6B7280', marginTop: 4 },
-  graficaCard: {
-    backgroundColor: C.blanco, borderRadius: 14, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+
+  seccionTitulo: { fontSize: 13, fontWeight: '700', color: C.gris2, marginTop: 4 },
+
+  chartCard: {
+    backgroundColor: C.blanco, borderRadius: 14, padding: 16, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  leyenda: { flexDirection: 'row', gap: 16, marginBottom: 14 },
-  leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  leyendaDot: { width: 10, height: 10, borderRadius: 5 },
-  leyendaTxt: { fontSize: 12, color: '#6B7280' },
-  mesRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-  mesLabel: { width: 28, fontSize: 11, fontWeight: '600', color: '#6B7280' },
-  barrasCol: { flex: 1, gap: 4 },
-  barraFondo: {
-    height: 8, backgroundColor: '#F3F4F6', borderRadius: 4, overflow: 'hidden',
+  sinDatos: {
+    alignItems: 'center', paddingVertical: 32, gap: 8,
+    backgroundColor: C.blanco, borderRadius: 12,
   },
-  barraRelleno: { height: 8, borderRadius: 4 },
-  mesCifras: { width: 80, alignItems: 'flex-end', gap: 4 },
-  mesCifra: { fontSize: 10, fontWeight: '600' },
-  sinDatos: { alignItems: 'center', paddingVertical: 24, gap: 8 },
   sinDatosTxt: { color: '#9CA3AF', fontSize: 13 },
   emptyBox: {
-    backgroundColor: C.blanco, borderRadius: 12, padding: 24,
+    backgroundColor: C.blanco, borderRadius: 12, padding: 20,
     alignItems: 'center',
   },
   emptyTxt: { color: '#9CA3AF', fontSize: 13 },
-  desgloseCard: {
-    backgroundColor: C.blanco, borderRadius: 12, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+
+  // Top 5
+  topCard: {
+    backgroundColor: C.blanco, borderRadius: 12, padding: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
   },
-  desgloseHeader: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
+  topRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 12, paddingHorizontal: 12,
   },
-  desgloseMes: { fontSize: 14, fontWeight: '700', color: C.texto },
-  desgloseCount: {
-    fontSize: 11, color: C.azul, fontWeight: '600',
-    backgroundColor: '#EEF2FA', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2,
+  topDivider: { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  topRank: {
+    width: 30, height: 30, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
   },
-  desgloseRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5 },
-  desgloseDivider: { borderTopWidth: 1, borderTopColor: '#F5F5F5', marginTop: 2, paddingTop: 8 },
-  desgloseLbl: { fontSize: 13, color: '#6B7280' },
-  desgloseVal: { fontSize: 13, fontWeight: '600', color: C.texto },
+  topRankTxt: { fontSize: 14, fontWeight: '700' },
+  topRfc: { fontSize: 13, fontWeight: '600', color: C.texto, fontFamily: 'monospace' },
+  topCount: { fontSize: 11, color: C.gris2, marginTop: 1 },
+  topMonto: { fontSize: 14, fontWeight: '700' },
 });

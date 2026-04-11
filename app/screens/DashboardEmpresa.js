@@ -25,13 +25,15 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
   const [refreshing, setRefreshing] = useState(false);
   const [usuario, setUsuario]       = useState(null);
   const [empresa, setEmpresa]       = useState(null);
+  const [suscripcion, setSuscripcion] = useState(null);
   const [stats, setStats]           = useState({
     docsPendientes:    0,
     cfdisEsteMes:      0,
-    proximaObligacion: null,
+    proximaObligacion: null,  // { obligacion, fecha_limite, diasPara }
     totalIngresos:     0,
     totalEgresos:      0,
   });
+  const [documentosRecientes, setDocumentosRecientes] = useState([]);
   const [suspendida, setSuspendida] = useState(false);
 
   const cargarDatos = useCallback(async () => {
@@ -48,12 +50,14 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
 
       if (!usr?.empresa_id) { setLoading(false); setRefreshing(false); return; }
 
-      // Verificar si la suscripción de la empresa está suspendida
+      // Suscripción completa (para widget de estado)
       const { data: sus } = await supabase
         .from('suscripciones')
-        .select('status')
+        .select('status, trial_ends_at, periodo_fin, monto, fecha_cancelacion')
         .eq('empresa_id', usr.empresa_id)
         .single();
+      setSuscripcion(sus);
+
       if (sus?.status === 'suspendida') {
         setSuspendida(true);
         setLoading(false);
@@ -71,40 +75,71 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
 
       const ahora     = new Date();
       const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString();
+      const hoyStr    = ahora.toISOString().slice(0, 10);
 
       // CFDIs del mes
-      const { data: cfdis } = await supabase
-        .from('cfdis')
-        .select('tipo, total, status')
-        .eq('empresa_id', usr.empresa_id)
-        .gte('created_at', inicioMes);
+      const [cfdisRes, docsPendRes, docsRecRes, proxOblRes] = await Promise.all([
+        supabase
+          .from('cfdis')
+          .select('tipo, total, status')
+          .eq('empresa_id', usr.empresa_id)
+          .gte('created_at', inicioMes),
 
-      // Documentos pendientes de revisión
-      const { count: docsPendientes } = await supabase
-        .from('documentos')
-        .select('id', { count: 'exact', head: true })
-        .eq('empresa_id', usr.empresa_id)
-        .eq('status', 'pendiente');
+        supabase
+          .from('documentos')
+          .select('id', { count: 'exact', head: true })
+          .eq('empresa_id', usr.empresa_id)
+          .eq('status', 'pendiente'),
 
-      const cfdisEsteMes = cfdis?.length ?? 0;
+        // Últimos 5 documentos subidos por esta empresa
+        supabase
+          .from('documentos')
+          .select('id, tipo, descripcion, fecha_doc, status, created_at')
+          .eq('empresa_id', usr.empresa_id)
+          .order('created_at', { ascending: false })
+          .limit(5),
+
+        // Próxima obligación desde calendario_obligaciones (Art. 12 CFF aplicado en SQL)
+        supabase
+          .from('calendario_obligaciones')
+          .select('obligacion, fecha_limite, tipo')
+          .eq('empresa_id', usr.empresa_id)
+          .eq('status', 'pendiente')
+          .gte('fecha_limite', hoyStr)
+          .order('fecha_limite', { ascending: true })
+          .limit(1),
+      ]);
+
+      const cfdis = cfdisRes.data ?? [];
+      const cfdisEsteMes = cfdis.length;
       let totalIngresos  = 0;
       let totalEgresos   = 0;
-      cfdis?.forEach(c => {
+      cfdis.forEach(c => {
         if (c.tipo === 'ingreso') totalIngresos += Number(c.total ?? 0);
         if (c.tipo === 'egreso')  totalEgresos  += Number(c.total ?? 0);
       });
 
-      // Próxima obligación fiscal: día 17 del mes siguiente
-      const mesProx = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 17);
-      const diasPara = Math.ceil((mesProx.getTime() - ahora.getTime()) / 86400000);
+      // Parsear próxima obligación desde calendario
+      let proximaObligacion = null;
+      const primera = proxOblRes.data?.[0];
+      if (primera) {
+        const fechaLim = new Date(primera.fecha_limite + 'T00:00:00');
+        const diasPara = Math.ceil((fechaLim.getTime() - ahora.getTime()) / 86400000);
+        proximaObligacion = {
+          obligacion: primera.obligacion,
+          fecha: fechaLim,
+          diasPara,
+        };
+      }
 
       setStats({
-        docsPendientes: docsPendientes ?? 0,
+        docsPendientes: docsPendRes.count ?? 0,
         cfdisEsteMes,
-        proximaObligacion: { fecha: mesProx, diasPara },
+        proximaObligacion,
         totalIngresos,
         totalEgresos,
       });
+      setDocumentosRecientes(docsRecRes.data ?? []);
     } catch (e) {
       console.error('Error cargando dashboard:', e);
     } finally {
@@ -207,7 +242,47 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
           <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" />
         </TouchableOpacity>
 
-        {/* ── Próxima obligación fiscal ─────────────────────── */}
+        {/* ── Widget de suscripción ─────────────────────────── */}
+        {suscripcion && (
+          <View style={styles.suscripcionBox}>
+            <View style={styles.suscripcionRow}>
+              <View>
+                <Text style={styles.suscripcionLbl}>Estado de suscripción</Text>
+                <Text style={[
+                  styles.suscripcionStatus,
+                  suscripcion.status === 'trial' && { color: C.azul },
+                  suscripcion.status === 'activa' && { color: C.verde },
+                  suscripcion.status === 'pago_pendiente' && { color: C.amarillo },
+                  suscripcion.status === 'cancelada' && { color: C.gris2 },
+                ]}>
+                  {suscripcion.status === 'trial' && 'Prueba gratis'}
+                  {suscripcion.status === 'activa' && 'Activa'}
+                  {suscripcion.status === 'pago_pendiente' && 'Pago pendiente'}
+                  {suscripcion.status === 'cancelada' && 'Cancelada'}
+                  {suscripcion.status === 'vencida' && 'Vencida'}
+                </Text>
+              </View>
+              {suscripcion.status === 'trial' && suscripcion.trial_ends_at && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.suscripcionLbl}>Vence</Text>
+                  <Text style={styles.suscripcionFecha}>
+                    {new Date(suscripcion.trial_ends_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                  </Text>
+                </View>
+              )}
+              {suscripcion.status === 'activa' && suscripcion.periodo_fin && (
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.suscripcionLbl}>Próximo cobro</Text>
+                  <Text style={styles.suscripcionFecha}>
+                    {new Date(suscripcion.periodo_fin).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ── Próxima obligación fiscal (desde calendario_obligaciones) ─ */}
         {stats.proximaObligacion && (
           <View style={[styles.obligacionBox,
             stats.proximaObligacion.diasPara <= 7 ? styles.obligacionUrgente : styles.obligacionNormal]}>
@@ -217,14 +292,14 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
               color={stats.proximaObligacion.diasPara <= 7 ? C.rojo : C.amarillo}
             />
             <View style={{ flex: 1 }}>
-              <Text style={styles.obligacionTitulo}>Próxima declaración</Text>
+              <Text style={styles.obligacionTitulo}>{stats.proximaObligacion.obligacion}</Text>
               <Text style={styles.obligacionFecha}>
                 {stats.proximaObligacion.fecha.toLocaleDateString('es-MX', {
                   day: 'numeric', month: 'long',
                 })}
                 {' · '}
                 {stats.proximaObligacion.diasPara > 0
-                  ? `en ${stats.proximaObligacion.diasPara} días`
+                  ? `en ${stats.proximaObligacion.diasPara} día${stats.proximaObligacion.diasPara !== 1 ? 's' : ''}`
                   : 'hoy'}
               </Text>
             </View>
@@ -298,6 +373,50 @@ export default function DashboardEmpresa({ onLogout, onNavigate }) {
           sub="Notas, tickets, recibos simples"
           onPress={() => onNavigate?.('SubirDocumentoNota')}
         />
+
+        {/* ── Últimos 5 documentos subidos ──────────────────── */}
+        {documentosRecientes.length > 0 && (
+          <>
+            <Text style={styles.seccion}>Últimos documentos subidos</Text>
+            <View style={styles.docsRecCard}>
+              {documentosRecientes.map((d, idx) => {
+                const fecha = new Date(d.created_at).toLocaleDateString('es-MX', {
+                  day: '2-digit', month: 'short',
+                });
+                const tipoLabel = {
+                  factura_fisica: 'Factura física',
+                  nota:           'Nota / ticket',
+                  estado_cuenta:  'Estado de cuenta',
+                  comprobante:    'Comprobante',
+                  contrato:       'Contrato',
+                  otro:           'Documento',
+                }[d.tipo] ?? d.tipo;
+                const statusColor = d.status === 'revisado' ? C.verde
+                  : d.status === 'rechazado' ? C.rojo : C.amarillo;
+                return (
+                  <View
+                    key={d.id}
+                    style={[
+                      styles.docRecRow,
+                      idx < documentosRecientes.length - 1 && styles.docRecDivider,
+                    ]}
+                  >
+                    <View style={styles.docRecIcon}>
+                      <Ionicons name="document-outline" size={16} color={C.azul} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.docRecTitulo} numberOfLines={1}>
+                        {d.descripcion ?? tipoLabel}
+                      </Text>
+                      <Text style={styles.docRecSub}>{tipoLabel} · {fecha}</Text>
+                    </View>
+                    <View style={[styles.docRecDot, { backgroundColor: statusColor }]} />
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* ── TAREA 3: MI ASESOR FISCAL ────────────────────── */}
         <Text style={styles.seccion}>Mi asesor fiscal</Text>
@@ -406,6 +525,17 @@ const styles = StyleSheet.create({
   btnEstadisticasTitulo: { color: C.blanco, fontSize: 16, fontWeight: '700' },
   btnEstadisticasSub:    { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 },
 
+  // Suscripción
+  suscripcionBox: {
+    backgroundColor: C.blanco, borderRadius: 12, padding: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  suscripcionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  suscripcionLbl: { fontSize: 11, color: C.gris2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  suscripcionStatus: { fontSize: 16, fontWeight: '700', marginTop: 2 },
+  suscripcionFecha: { fontSize: 14, fontWeight: '700', color: C.texto, marginTop: 2 },
+
   // Próxima obligación
   obligacionBox: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -413,8 +543,28 @@ const styles = StyleSheet.create({
   },
   obligacionNormal:  { backgroundColor: '#FFFBEB', borderColor: '#FDE68A' },
   obligacionUrgente: { backgroundColor: '#FFF1F2', borderColor: '#FECDD3' },
-  obligacionTitulo:  { fontSize: 12, fontWeight: '700', color: C.gris2, textTransform: 'uppercase', letterSpacing: 0.5 },
-  obligacionFecha:   { fontSize: 14, fontWeight: '600', color: C.texto, marginTop: 2 },
+  obligacionTitulo:  { fontSize: 13, fontWeight: '700', color: C.texto },
+  obligacionFecha:   { fontSize: 12, fontWeight: '500', color: C.gris2, marginTop: 2 },
+
+  // Documentos recientes
+  docsRecCard: {
+    backgroundColor: C.blanco, borderRadius: 12, padding: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  docRecRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, paddingHorizontal: 10,
+  },
+  docRecDivider: { borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  docRecIcon: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: '#EEF2FA',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  docRecTitulo: { fontSize: 13, fontWeight: '600', color: C.texto },
+  docRecSub: { fontSize: 11, color: C.gris2, marginTop: 1 },
+  docRecDot: { width: 8, height: 8, borderRadius: 4 },
 
   // Stats
   seccion:  { fontSize: 12, fontWeight: '700', color: C.gris2, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6 },

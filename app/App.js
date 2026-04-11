@@ -18,6 +18,7 @@ import SubirCSF from './screens/SubirCSF';
 import SubirDocumento from './screens/SubirDocumento';
 import ChatCliente from './screens/ChatCliente';
 import GraficasEmpresa from './screens/GraficasEmpresa';
+import MisEmpresas from './screens/MisEmpresas';
 
 export default function App() {
   const [session, setSession] = useState(null);
@@ -160,6 +161,8 @@ export default function App() {
       return <><StatusBar style="light" /><EstrategiaFiscal onBack={goBack} /></>;
     if (currentScreen === 'ChatContador')
       return <><StatusBar style="light" /><ChatContador onBack={goBack} /></>;
+    if (currentScreen === 'MisEmpresas')
+      return <><StatusBar style="light" /><MisEmpresas onBack={goBack} /></>;
 
     return (
       <>
