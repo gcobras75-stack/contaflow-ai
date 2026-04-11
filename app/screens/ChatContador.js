@@ -1,7 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ScrollView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+  ScrollView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
@@ -24,51 +24,81 @@ const SUGERENCIAS = [
   '¿Qué pasa si cancelo una factura después de 3 días?',
 ];
 
+const SALUDO_INICIAL = {
+  role: 'assistant',
+  content: 'Hola, soy el CPC Ricardo Morales. Estoy aquí para asesorarte en materia fiscal y contable. ¿En qué te puedo ayudar hoy?',
+};
+
 export default function ChatContador({ onBack }) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hola, soy el CPC Ricardo Morales. Estoy aquí para asesorarte en materia fiscal y contable. ¿En qué te puedo ayudar hoy?',
-    },
-  ]);
+  const [messages, setMessages] = useState([SALUDO_INICIAL]);
   const [input, setInput] = useState('');
   const [enviando, setEnviando] = useState(false);
+  const [cargandoHistorial, setCargandoHistorial] = useState(true);
   const scrollRef = useRef(null);
 
   const scrollAbajo = useCallback(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }, []);
 
+  // Cargar historial persistente al montar
+  useEffect(() => {
+    async function cargarHistorial() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+
+        const res = await fetch(`${WEB_BASE}/api/chat-contador`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        const json = await res.json();
+        if (Array.isArray(json.mensajes) && json.mensajes.length > 0) {
+          setMessages([SALUDO_INICIAL, ...json.mensajes]);
+          scrollAbajo();
+        }
+      } catch {
+        // silencioso — si no hay red, se queda con el saludo inicial
+      } finally {
+        setCargandoHistorial(false);
+      }
+    }
+    cargarHistorial();
+  }, [scrollAbajo]);
+
   const enviar = async (texto) => {
     const msg = (texto ?? input).trim();
     if (!msg || enviando) return;
     setInput('');
 
-    const nuevos = [...messages, { role: 'user', content: msg }];
-    setMessages(nuevos);
+    // Optimistic: muestra el mensaje del usuario inmediatamente
+    setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setEnviando(true);
     scrollAbajo();
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Enviar solo las últimas 10 mensajes para no exceder el contexto
-      const historial = nuevos.slice(-10).map(m => ({ role: m.role, content: m.content }));
-
+      // Nuevo flujo: el servidor tiene el historial, solo mandamos el mensaje nuevo.
       const res = await fetch(`${WEB_BASE}/api/chat-contador`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token ?? ''}`,
         },
-        body: JSON.stringify({ messages: historial }),
+        body: JSON.stringify({ content: msg }),
       });
 
       const json = await res.json();
-      if (json.error) {
+
+      if (res.status === 429) {
         setMessages(prev => [...prev, {
           role: 'assistant',
-          content: `Lo siento, ocurrió un error: ${json.error}`,
+          content: `⏸️ Has alcanzado el límite de 20 mensajes por hora. Inténtalo más tarde.`,
+        }]);
+      } else if (!res.ok || json.error) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Lo siento, ocurrió un error: ${json.error ?? 'respuesta inválida'}`,
         }]);
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: json.reply }]);
@@ -85,10 +115,34 @@ export default function ChatContador({ onBack }) {
   };
 
   const limpiarChat = () => {
-    setMessages([{
-      role: 'assistant',
-      content: 'Chat reiniciado. ¿En qué te puedo ayudar?',
-    }]);
+    Alert.alert(
+      '¿Limpiar historial?',
+      'Se borrarán todos los mensajes previos con el CPC Ricardo. Esta acción es permanente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpiar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              const res = await fetch(`${WEB_BASE}/api/chat-contador`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+              });
+              const json = await res.json();
+              if (res.ok) {
+                setMessages([SALUDO_INICIAL]);
+              } else {
+                Alert.alert('Error', json.error ?? 'No se pudo limpiar');
+              }
+            } catch {
+              Alert.alert('Error', 'Sin conexión');
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (

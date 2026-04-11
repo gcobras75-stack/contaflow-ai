@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ScrollView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+  ScrollView, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
@@ -41,10 +41,11 @@ export default function ChatCliente({ onBack }) {
   const [input, setInput]         = useState('');
   const [cargando, setCargando]   = useState(false);
   const [empresa, setEmpresa]     = useState(null);
+  const [cargandoHistorial, setCargandoHistorial] = useState(true);
   const scrollRef                 = useRef(null);
 
   useEffect(() => {
-    cargarEmpresa();
+    inicializar();
   }, []);
 
   useEffect(() => {
@@ -52,6 +53,12 @@ export default function ChatCliente({ onBack }) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }
   }, [messages]);
+
+  const inicializar = async () => {
+    await cargarEmpresa();
+    await cargarHistorialPersistente();
+    setCargandoHistorial(false);
+  };
 
   const cargarEmpresa = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -68,13 +75,29 @@ export default function ChatCliente({ onBack }) {
     }
   };
 
+  const cargarHistorialPersistente = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const res = await fetch(`${WEB_BASE}/api/chat-cliente`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const json = await res.json();
+      if (Array.isArray(json.mensajes) && json.mensajes.length > 0) {
+        setMessages(json.mensajes);
+      }
+    } catch {
+      // silencioso
+    }
+  };
+
   const enviar = async (texto) => {
     const pregunta = (texto ?? input).trim();
     if (!pregunta || cargando) return;
     setInput('');
 
-    const nuevos = [...messages, { role: 'user', content: pregunta }];
-    setMessages(nuevos);
+    setMessages(prev => [...prev, { role: 'user', content: pregunta }]);
     setCargando(true);
 
     try {
@@ -85,19 +108,62 @@ export default function ChatCliente({ onBack }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token ?? ''}`,
         },
-        body: JSON.stringify({ messages: nuevos }),
+        body: JSON.stringify({ content: pregunta }),
       });
       const json = await res.json();
-      if (json.respuesta) {
-        setMessages(prev => [...prev, { role: 'assistant', content: json.respuesta }]);
+
+      if (res.status === 429) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: '⏸️ Has alcanzado el límite de 20 mensajes por hora. Inténtalo más tarde.',
+        }]);
+      } else if (json.respuesta || json.reply) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: json.respuesta ?? json.reply,
+        }]);
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Hubo un error, intenta de nuevo.' }]);
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `Hubo un error, intenta de nuevo.${json.error ? ' (' + json.error + ')' : ''}`,
+        }]);
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Error de conexión. Verifica tu internet.' }]);
     } finally {
       setCargando(false);
     }
+  };
+
+  const limpiarHistorial = () => {
+    Alert.alert(
+      '¿Limpiar historial?',
+      'Se borrarán todas tus conversaciones anteriores con el Asesor ContaFlow.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpiar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              const res = await fetch(`${WEB_BASE}/api/chat-cliente`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+              });
+              if (res.ok) {
+                setMessages([]);
+              } else {
+                const json = await res.json().catch(() => ({}));
+                Alert.alert('Error', json.error ?? 'No se pudo limpiar');
+              }
+            } catch {
+              Alert.alert('Error', 'Sin conexión');
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -112,12 +178,18 @@ export default function ChatCliente({ onBack }) {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerNombre}>Asesor ContaFlow</Text>
           <Text style={styles.headerSub}>
-            {empresa?.regimen_fiscal
-              ? empresa.regimen_fiscal.replace('Régimen ', '')
-              : 'Experto en leyes fiscales mexicanas'}
+            {cargandoHistorial
+              ? 'Cargando historial...'
+              : empresa?.regimen_fiscal
+                ? empresa.regimen_fiscal.replace('Régimen ', '')
+                : 'Experto en leyes fiscales mexicanas'}
           </Text>
         </View>
-        <View style={styles.onlineDot} />
+        {messages.length > 0 && (
+          <TouchableOpacity onPress={limpiarHistorial} style={styles.backBtn}>
+            <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.7)" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <KeyboardAvoidingView
