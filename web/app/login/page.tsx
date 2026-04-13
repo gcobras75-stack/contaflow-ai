@@ -50,11 +50,13 @@ export default function LoginPage() {
       }
 
       const { data: usuario, error: userError } = await withTimeout(
-        supabase
-          .from('usuarios')
-          .select('rol')
-          .eq('id', authData.user.id)
-          .single(),
+        Promise.resolve(
+          supabase
+            .from('usuarios')
+            .select('rol')
+            .eq('id', authData.user.id)
+            .single(),
+        ),
         LOGIN_TIMEOUT_MS,
       );
 
