@@ -16,7 +16,7 @@ const C = {
   amarillo: '#F59E0B',
 };
 
-const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow-ai.vercel.app';
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow.mx';
 
 const PERIODOS = [
   { label: 'Mes actual',        dias: 30  },

@@ -15,7 +15,7 @@ const C = {
   rojo: '#EF4444',
 };
 
-const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow-ai.vercel.app';
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow.mx';
 
 export default function VincularEmpresa({ onVinculado, onLogout }) {
   const [codigo, setCodigo]       = useState('');

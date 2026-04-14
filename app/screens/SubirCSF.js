@@ -18,7 +18,7 @@ const C = {
   morado: '#7C3AED',
 };
 
-const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow-ai.vercel.app';
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow.mx';
 
 export default function SubirCSF({ onBack }) {
   const [etapa, setEtapa]       = useState('inicio'); // inicio | procesando | exito | error

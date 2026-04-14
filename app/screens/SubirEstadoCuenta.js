@@ -30,7 +30,7 @@ const BANCOS_MX = [
   'Scotiabank', 'Inbursa', 'Azteca', 'BanBajío', 'Otro',
 ];
 
-const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow-ai.vercel.app';
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow.mx';
 
 export default function SubirEstadoCuenta({ onBack }) {
   const [etapa, setEtapa] = useState('inicio');

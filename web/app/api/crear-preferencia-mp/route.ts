@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       .eq('empresa_id', empresa_id)
       .single();
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://contaflow-ai.vercel.app';
+    const appUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://contaflow.mx';
 
     // ── Crear preferencia en Mercado Pago ──────────────────────
     const preference = {

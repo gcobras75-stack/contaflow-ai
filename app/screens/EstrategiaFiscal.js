@@ -16,7 +16,7 @@ const C = {
   morado: '#7C3AED',
 };
 
-const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow-ai.vercel.app';
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow.mx';
 
 const SUGERENCIAS = [
   '¿Qué estrategia fiscal me recomiendas para este cliente?',
