@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { formatMXN, getSemaphoreClasses } from '@/utils'
 import type { SemaphoreColor } from '@/types'
 import { SeasonAlertWidget } from '@/components/dashboard/SeasonAlertWidget'
+import { ProductImage } from '@/components/ui/ProductImage'
 
 const stats = {
   daily_commissions:        18_450,
@@ -30,11 +31,11 @@ const mockTrends = [
 ]
 
 const mockCampaigns = [
-  { name: 'Aretes Plata — Meta',      platform: 'meta',   color: 'green'  as SemaphoreColor, roi: 210, budget_spent: 3_200 },
-  { name: 'Bolsas Eco — TikTok',      platform: 'tiktok', color: 'green'  as SemaphoreColor, roi: 175, budget_spent: 1_800 },
-  { name: 'Colágeno — Meta',          platform: 'meta',   color: 'yellow' as SemaphoreColor, roi: 112, budget_spent: 2_100 },
-  { name: 'Ropa Deportiva — TikTok',  platform: 'tiktok', color: 'yellow' as SemaphoreColor, roi: 95,  budget_spent: 980  },
-  { name: 'Mini Aspiradora — Meta',   platform: 'meta',   color: 'red'    as SemaphoreColor, roi: 61,  budget_spent: 1_500 },
+  { name: 'Aretes Plata — Meta',      platform: 'meta',   color: 'green'  as SemaphoreColor, roi: 210, budget_spent: 3_200, keyword: 'Aretes de plata' },
+  { name: 'Bolsas Eco — TikTok',      platform: 'tiktok', color: 'green'  as SemaphoreColor, roi: 175, budget_spent: 1_800, keyword: 'Bolsas de tela ecológica' },
+  { name: 'Colágeno — Meta',          platform: 'meta',   color: 'yellow' as SemaphoreColor, roi: 112, budget_spent: 2_100, keyword: 'Suplementos colágeno' },
+  { name: 'Ropa Deportiva — TikTok',  platform: 'tiktok', color: 'yellow' as SemaphoreColor, roi: 95,  budget_spent: 980,   keyword: 'Ropa deportiva mujer' },
+  { name: 'Mini Aspiradora — Meta',   platform: 'meta',   color: 'red'    as SemaphoreColor, roi: 61,  budget_spent: 1_500, keyword: 'Mini aspiradora' },
 ]
 
 const mockAlerts = [
@@ -117,33 +118,10 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <StatCard
-          label="Comisiones hoy"
-          value={formatMXN(stats.daily_commissions)}
-          change={stats.daily_commissions_change}
-          icon={Coins}
-          gradient
-          delay={0}
-        />
-        <StatCard
-          label="Vendedores activos"
-          value={stats.active_vendors.toString()}
-          change={stats.active_vendors_change}
-          icon={Users}
-          delay={60}
-        />
-        <StatCard
-          label="Campañas activas"
-          value={stats.active_campaigns.toString()}
-          icon={Radio}
-          delay={120}
-        />
-        <StatCard
-          label="Pendientes aprobación"
-          value={stats.pending_approvals.toString()}
-          icon={Bell}
-          delay={180}
-        />
+        <StatCard label="Comisiones hoy"      value={formatMXN(stats.daily_commissions)} change={stats.daily_commissions_change} icon={Coins}  gradient delay={0}   />
+        <StatCard label="Vendedores activos"  value={stats.active_vendors.toString()}    change={stats.active_vendors_change}    icon={Users}         delay={60}  />
+        <StatCard label="Campañas activas"    value={stats.active_campaigns.toString()}                                          icon={Radio}         delay={120} />
+        <StatCard label="Pendientes aprobación" value={stats.pending_approvals.toString()}                                       icon={Bell}          delay={180} />
       </div>
 
       {/* Grid principal */}
@@ -167,28 +145,26 @@ export default function DashboardPage() {
           <div className="space-y-2">
             {mockTrends.map((trend) => {
               const badge = badgeConfig[trend.badge as keyof typeof badgeConfig] ?? badgeConfig['ESTABLE']
-              const src = sourceColor[trend.source] ?? 'text-brand-muted bg-brand-hover'
+              const src   = sourceColor[trend.source] ?? 'text-brand-muted bg-brand-hover'
               return (
                 <div
                   key={trend.keyword}
-                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-brand-hover transition-colors group cursor-pointer"
+                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-brand-hover transition-colors group cursor-pointer"
                 >
+                  {/* Imagen del producto */}
+                  <ProductImage keyword={trend.keyword} size={48} radius={10} className="shrink-0" />
+
                   {/* Score */}
-                  <div className="w-10 text-center shrink-0">
+                  <div className="w-8 text-center shrink-0">
                     <span className="text-sm font-bold font-mono text-brand-text">{trend.score}</span>
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5 mb-1">
                       <span className="text-sm font-medium text-brand-text truncate">{trend.keyword}</span>
-                      {trend.is_early && (
-                        <span className="relative flex-shrink-0">
-                          <Zap size={10} className="text-brand-yellow" />
-                        </span>
-                      )}
+                      {trend.is_early && <Zap size={10} className="text-brand-yellow shrink-0" />}
                     </div>
-                    {/* Barra de score */}
                     <div className="h-1 rounded-full bg-brand-hover">
                       <div className="score-bar-fill" style={{ width: `${trend.score}%` }} />
                     </div>
@@ -234,8 +210,10 @@ export default function DashboardPage() {
               }
               const cfg = colorMap[c.color] ?? colorMap.yellow
               return (
-                <div key={c.name} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent ${cfg.bg} hover:border-brand-border transition-all`}>
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${cfg.dot} ${c.color === 'green' ? 'animate-pulse' : ''}`} />
+                <div key={c.name} className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-transparent ${cfg.bg} hover:border-brand-border transition-all`}>
+                  {/* Imagen pequeña del producto */}
+                  <ProductImage keyword={c.keyword} size={36} radius={8} className="shrink-0" />
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot} ${c.color === 'green' ? 'animate-pulse' : ''}`} />
                   <span className="flex-1 text-sm text-brand-text truncate font-medium">{c.name}</span>
                   <span className={`text-sm font-bold font-mono ${cfg.text}`}>
                     {c.roi > 0 ? '+' : ''}{c.roi}%

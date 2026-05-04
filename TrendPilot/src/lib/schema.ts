@@ -67,6 +67,7 @@ export const products = pgTable('products', {
   scored_at:        timestamp('scored_at'),
   status:           productStatusEnum('status').notNull().default('pending'),
   rejection_reason: text('rejection_reason'),
+  ml_thumbnail:     text('ml_thumbnail'),                               // thumbnail cacheado de MercadoLibre
   trend_data:       jsonb('trend_data').$type<Record<string, unknown>>(),
   created_at:       timestamp('created_at').notNull().defaultNow(),
 }, (t) => [

@@ -3,20 +3,22 @@
 import Link from 'next/link'
 import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight, Pause, Zap, Coins } from 'lucide-react'
 import { cn } from '@/utils'
+import { ProductImage } from '@/components/ui/ProductImage'
 
 export interface CampaignCardData {
-  id:                string
-  product_name:      string
-  vendor_name:       string
-  platform:          string
-  semaphore_color:   'green' | 'yellow' | 'red' | 'paused'
-  budget_total:      number
-  budget_spent:      number
-  sales_generated:   number
+  id:                 string
+  product_name:       string
+  vendor_name:        string
+  platform:           string
+  semaphore_color:    'green' | 'yellow' | 'red' | 'paused'
+  budget_total:       number
+  budget_spent:       number
+  sales_generated:    number
   commissions_earned: number
-  pause_reason?:     string
-  ai_suggestions?:   Record<string, unknown>
-  created_at:        string
+  pause_reason?:      string
+  ai_suggestions?:    Record<string, unknown>
+  product_image?:     string | null   // URL de imagen del producto (images[0])
+  created_at:         string
 }
 
 const semConfig = {
@@ -67,8 +69,8 @@ const semConfig = {
 }
 
 const platformBadge: Record<string, { label: string; cls: string }> = {
-  meta:   { label: 'Meta',   cls: 'bg-[#1877F2]/15 text-[#1877F2]' },
-  tiktok: { label: 'TikTok', cls: 'bg-[#FF0050]/15 text-[#FF0050]' },
+  meta:   { label: 'Meta',          cls: 'bg-[#1877F2]/15 text-[#1877F2]' },
+  tiktok: { label: 'TikTok',        cls: 'bg-[#FF0050]/15 text-[#FF0050]' },
   both:   { label: 'Meta + TikTok', cls: 'bg-brand-purple/15 text-brand-purple' },
 }
 
@@ -97,10 +99,19 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
 
   return (
     <div className={cn('rounded-2xl border p-4 space-y-3', cfg.border, cfg.bg)}>
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+      {/* Header con imagen */}
+      <div className="flex items-start gap-3">
+        {/* Imagen del producto 56x56 */}
+        <ProductImage
+          keyword={campaign.product_name}
+          src={campaign.product_image}
+          size={56}
+          radius={10}
+          className="shrink-0 mt-0.5"
+        />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', cfg.dot, cfg.dotPulse && 'animate-pulse')} />
             <span className={cn('text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full', cfg.badgeBg)}>
               {cfg.label}
@@ -112,6 +123,7 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
           <h3 className="text-sm font-semibold text-brand-text truncate">{campaign.product_name}</h3>
           <p className="text-xs text-brand-muted truncate mt-0.5">{campaign.vendor_name}</p>
         </div>
+
         <Icon size={16} className={cn('shrink-0 mt-1', cfg.iconColor)} />
       </div>
 
@@ -130,10 +142,7 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
           <span className="tabular-nums font-mono">{fmt(campaign.budget_spent)} / {fmt(campaign.budget_total)}</span>
         </div>
         <div className="h-1 bg-brand-hover rounded-full overflow-hidden">
-          <div
-            className={cn('h-full rounded-full transition-all', cfg.dot)}
-            style={{ width: `${spendPct}%` }}
-          />
+          <div className={cn('h-full rounded-full transition-all', cfg.dot)} style={{ width: `${spendPct}%` }} />
         </div>
       </div>
 
