@@ -39,7 +39,7 @@ const moduleGroups = [
   {
     label: 'Finanzas',
     modules: [
-      { id: 11, name: 'GrowthFund',   label: 'Fondo',         href: '/dashboard/fund',        icon: Coins },
+      { id: 11, name: 'GrowthFund',   label: 'Comisiones',    href: '/dashboard/commissions', icon: Coins },
       { id: 12, name: 'TrustScore',   label: 'Reputación',    href: '/dashboard/trust',       icon: Shield },
       { id: 13, name: 'MarketSpy',    label: 'Competencia',   href: '/dashboard/market',      icon: Eye },
       { id: 14, name: 'SeasonAlert',  label: 'Temporadas',    href: '/dashboard/seasons',     icon: Calendar },

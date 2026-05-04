@@ -183,6 +183,24 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
         </p>
       )}
 
+      {/* Sugerencias IA para campañas rojas */}
+      {(campaign.semaphore_color === 'red' || campaign.semaphore_color === 'paused') &&
+       Array.isArray(campaign.ai_suggestions?.suggestions) && (
+        <div className="bg-brand-yellow/6 border border-brand-yellow/20 rounded-xl p-2.5 space-y-1.5">
+          <p className="text-[10px] font-semibold text-brand-yellow flex items-center gap-1">
+            <Zap size={9} /> Sugerencias IA
+          </p>
+          <ul className="space-y-1">
+            {(campaign.ai_suggestions!.suggestions as string[]).map((s, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[10px] text-brand-muted">
+                <span className="text-brand-yellow mt-0.5 shrink-0">→</span>
+                <span className="leading-relaxed">{String(s)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Acciones */}
       <div className="flex gap-2 pt-1">
         <Link
