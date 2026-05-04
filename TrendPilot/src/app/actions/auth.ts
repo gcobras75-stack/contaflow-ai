@@ -12,7 +12,13 @@ import { profiles, vendors } from '@/lib/schema'
 import { logLoginFailed, logServerError } from '@/lib/logger'
 import { sendVendorWelcome } from '@/lib/twilio'
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? '')
+function sendEmail(params: { from: string; to: string; subject: string; html: string }) {
+  if (!process.env.RESEND_API_KEY) {
+    console.log('Email no enviado: RESEND_API_KEY no configurada')
+    return Promise.resolve()
+  }
+  return new Resend(process.env.RESEND_API_KEY).emails.send(params)
+}
 
 // ─── Schemas de validación ──────────────────────────────────────────────────
 
@@ -194,7 +200,7 @@ export async function registerAction(
   }
 
   // Enviar email de bienvenida — fire-and-forget
-  resend.emails.send({
+  sendEmail({
     from:    'TrendPilot <hola@trendpilot.marketing>',
     to:      email,
     subject: 'Bienvenido a TrendPilot 🚀',
@@ -243,7 +249,7 @@ export async function createVendorByAdmin(data: {
     sendVendorWelcome(whatsapp_number, name).catch((err) =>
       logServerError(err, 'createVendorByAdmin/sendWhatsApp')
     )
-    resend.emails.send({
+    sendEmail({
       from:    'TrendPilot <hola@trendpilot.marketing>',
       to:      email,
       subject: 'Bienvenido a TrendPilot 🚀',
