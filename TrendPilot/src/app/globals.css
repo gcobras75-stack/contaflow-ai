@@ -2,29 +2,117 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Variables ─────────────────��───────────────────────────────────────────── */
 :root {
-  --bg: #0A1628;
-  --surface: #0F1E38;
-  --border: #1E3252;
+  --sidebar-width: 240px;
+  --header-height: 64px;
 }
+
+/* ─── Base ──────────────────────���────────────────────────���───────────────────── */
+* { box-sizing: border-box; }
 
 body {
-  background-color: #0A1628;
-  color: #E8EDF5;
+  background-color: #0A0F1E;
+  color: #F8FAFC;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar personalizada */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* ─── Scrollbar ────────────────���─────────────────────────���───────────────────── */
+::-webkit-scrollbar       { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #0066FF; }
+
+/* ─── Gradient text ─────────────────────────────────────���────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #0066FF 0%, #7C3AED 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
-::-webkit-scrollbar-track {
-  background: #0A1628;
+.gradient-text-green {
+  background: linear-gradient(135deg, #00FF88 0%, #00D4AA 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
-::-webkit-scrollbar-thumb {
-  background: #1E3252;
-  border-radius: 3px;
+
+/* ─── Gradient button ─────────────────────��──────────────────────────��───────── */
+.btn-gradient {
+  background: linear-gradient(135deg, #0066FF 0%, #7C3AED 100%);
+  transition: filter 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #0066FF;
+.btn-gradient:hover  {
+  filter: brightness(1.12);
+  box-shadow: 0 4px 24px rgba(0,102,255,0.4);
+  transform: translateY(-1px);
 }
+.btn-gradient:active { transform: scale(0.98); filter: brightness(0.98); }
+
+/* ─── Shimmer skeleton ────────────────────────���──────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #1F2937 25%, #2D3748 50%, #1F2937 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ─── Dot grid ───────────────────────────���───────────────────────────────────── */
+.dot-grid {
+  background-image: radial-gradient(circle, #1E293B 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ─── Glass ────────────────────────────��───────────────────────────���─────────── */
+.glass {
+  background: rgba(10, 15, 30, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* ─── Score bar gradient ────────────────────��────────────────────────────────── */
+.score-bar-fill {
+  background: linear-gradient(90deg, #0066FF, #7C3AED);
+  border-radius: 99px;
+  height: 100%;
+  transition: width 0.6s ease;
+}
+
+/* ─── Card hover lift ─────────────────────────────────────────────────────���──── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,102,255,0.12);
+}
+
+/* ─── Animations ──────────────────��──────────────────────────��───────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in   { animation: fadeIn  0.35s ease both; }
+.animate-slide-up  { animation: slideUp 0.3s  ease both; }
+.animate-scale-in  { animation: scaleIn 0.25s ease both; }
+
+/* ─── Staggered children animation ──────────────────────────────────────────── */
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
