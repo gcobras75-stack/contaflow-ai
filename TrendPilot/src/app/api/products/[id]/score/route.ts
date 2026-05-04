@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { eq } from 'drizzle-orm'
 import { verifyAuth, unauthorizedResponse, serverErrorResponse } from '@/lib/api-auth'
 import { getCurrentSeasonScore } from '@/lib/seasonalert'
 import { logServerError } from '@/lib/logger'
-
-function getService() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
-}
+import { db } from '@/lib/db'
+import { products } from '@/lib/schema'
+import { getTrends } from '@/lib/queries/trends'
+import { updateProductStatus } from '@/lib/queries/products'
 
 // ─── Interfaces de respuesta de MercadoLibre ──────────────────────────────────
 
@@ -28,27 +24,19 @@ interface MLSearchResult {
 async function scoreTrend(
   productName: string,
   category:    string,
-  supabase:    ReturnType<typeof getService>
 ): Promise<{ score: number; reason: string }> {
   const normName = productName.toLowerCase()
   const normCat  = (category ?? '').toLowerCase()
 
-  // Buscar en trends de las últimas 24 horas
-  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const cutoffMs = Date.now() - 24 * 60 * 60 * 1000
+  const allTrends = await getTrends(50)
+  const recentTrends = allTrends.filter((t) => new Date(t.detected_at).getTime() > cutoffMs)
 
-  const { data: trends } = await supabase
-    .from('trends')
-    .select('keyword, trend_score')
-    .gte('detected_at', cutoff)
-    .order('trend_score', { ascending: false })
-    .limit(50)
-
-  if (!trends || trends.length === 0) {
+  if (recentTrends.length === 0) {
     return { score: 10, reason: 'Sin datos de tendencias recientes (score base)' }
   }
 
-  // ¿El producto está directamente en tendencias?
-  const directMatch = trends.find((t) => {
+  const directMatch = recentTrends.find((t) => {
     const kw = t.keyword.toLowerCase()
     return normName.includes(kw) || kw.includes(normName.split(' ')[0])
   })
@@ -56,9 +44,8 @@ async function scoreTrend(
     return { score: 30, reason: `En tendencias hoy (keyword: "${directMatch.keyword}", score ${directMatch.trend_score})` }
   }
 
-  // ¿La categoría está en tendencias?
   if (normCat) {
-    const catMatch = trends.find((t) => {
+    const catMatch = recentTrends.find((t) => {
       const kw = t.keyword.toLowerCase()
       return kw.includes(normCat) || normCat.includes(kw)
     })
@@ -182,8 +169,6 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  // Este endpoint puede ser llamado por el sistema (sin auth) o por un admin
-  // Verificamos auth — si no hay token, aceptamos el llamado interno (same-origin)
   const authHeader = request.headers.get('authorization')
   if (authHeader) {
     const auth = await verifyAuth(request)
@@ -192,28 +177,22 @@ export async function POST(
   }
 
   const { id } = params
-  const supabase = getService()
 
   try {
-    // Obtener datos del producto
-    const { data: product, error: fetchErr } = await supabase
-      .from('products')
-      .select('id, name, price, category, status, vendor_id')
-      .eq('id', id)
-      .single()
+    const rows = await db.select().from(products).where(eq(products.id, id)).limit(1)
+    const product = rows[0] ?? null
 
-    if (fetchErr || !product) {
+    if (!product) {
       return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 })
     }
 
-    // Calcular los 5 factores en paralelo
     const [trend, competition, quality] = await Promise.all([
-      scoreTrend(product.name, product.category ?? '', supabase),
+      scoreTrend(product.name, product.category ?? ''),
       scoreCompetition(product.name),
       scoreQuality(product.name),
     ])
 
-    const pricing    = scorePricing(product.price, competition.avgPrice)
+    const pricing     = scorePricing(product.price, competition.avgPrice)
     const seasonality = scoreSeasonality(product.category ?? 'general')
 
     const totalScore = Math.min(100, Math.max(0,
@@ -233,29 +212,21 @@ export async function POST(
       action,
     }
 
-    // Actualizar el producto con el score
     const newStatus = action === 'auto_approve' ? 'approved'
-      : action === 'auto_reject'   ? 'rejected'
-      : product.status  // mantener 'pending' si es manual_review o request_improvements
+      : action === 'auto_reject' ? 'rejected'
+      : product.status
 
     const rejectionReason = action === 'auto_reject'
       ? `ProductScore: ${totalScore}/100 (${badge}). ${competition.reason} ${pricing.reason}`
       : null
 
-    const { error: updateErr } = await supabase
-      .from('products')
-      .update({
-        score:            totalScore,
-        score_breakdown:  scoreBreakdown,
-        status:           newStatus,
-        rejection_reason: rejectionReason,
-        scored_at:        new Date().toISOString(),
-      })
-      .eq('id', id)
-
-    if (updateErr) {
-      logServerError(updateErr, `POST /api/products/${id}/score — update`)
-    }
+    await db.update(products).set({
+      product_score:    totalScore,
+      score_breakdown:  scoreBreakdown as unknown as Record<string, number>,
+      status:           newStatus,
+      rejection_reason: rejectionReason,
+      scored_at:        new Date(),
+    }).where(eq(products.id, id))
 
     return NextResponse.json({
       product_id:  id,

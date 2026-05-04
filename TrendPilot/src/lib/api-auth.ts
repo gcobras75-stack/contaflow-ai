@@ -1,76 +1,42 @@
-import { createClient } from '@supabase/supabase-js'
+import { auth } from './auth'
 import { NextResponse } from 'next/server'
 import { logUnauthorizedAccess } from './logger'
 import { checkRateLimit, getClientIP, RATE_LIMITS } from './ratelimit'
 
 type RateLimitKey = keyof typeof RATE_LIMITS
 
-// Verifica autenticación en cada API route
-// Retorna { userId, vendorId } si válido, o null si inválido
-export async function verifyAuth(request: Request): Promise<{
-  userId: string
-  role: string
+// Verifica autenticación en cada API route usando la sesión NextAuth (cookie JWT)
+export async function verifyAuth(_request: Request): Promise<{
+  userId:   string
+  role:     string
   vendorId?: string
 } | null> {
-  const authHeader = request.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
-    logUnauthorizedAccess(getClientIP(request), new URL(request.url).pathname, 'missing_token')
-    return null
-  }
-
-  const token = authHeader.slice(7)
-
   try {
-    // Usar cliente con anon key para verificar el JWT del usuario
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-
-    if (error || !user) {
-      logUnauthorizedAccess(getClientIP(request), new URL(request.url).pathname, 'invalid_token')
-      return null
-    }
-
-    // Obtener rol del usuario desde profiles usando service client
-    const serviceClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    const { data: profile } = await serviceClient
-      .from('profiles')
-      .select('role, vendor_id')
-      .eq('id', user.id)
-      .single()
-
+    const session = await auth()
+    if (!session?.user?.id) return null
     return {
-      userId: user.id,
-      role: profile?.role ?? 'vendor',
-      vendorId: profile?.vendor_id ?? undefined,
+      userId:   session.user.id,
+      role:     session.user.role ?? 'vendor',
+      vendorId: session.user.vendorId,
     }
   } catch {
-    logUnauthorizedAccess(getClientIP(request), new URL(request.url).pathname, 'token_verification_failed')
+    logUnauthorizedAccess(
+      getClientIP(_request),
+      new URL(_request.url).pathname,
+      'session_verification_failed'
+    )
     return null
   }
 }
 
 // Respuesta 401 estándar — sin detalles que ayuden a atacantes
 export function unauthorizedResponse(): NextResponse {
-  return NextResponse.json(
-    { error: 'No autorizado' },
-    { status: 401 }
-  )
+  return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 }
 
 // Respuesta 403 estándar
 export function forbiddenResponse(): NextResponse {
-  return NextResponse.json(
-    { error: 'Acceso denegado' },
-    { status: 403 }
-  )
+  return NextResponse.json({ error: 'Acceso denegado' }, { status: 403 })
 }
 
 // Respuesta 429 estándar
@@ -80,7 +46,7 @@ export function rateLimitResponse(resetAt: number): NextResponse {
     {
       status: 429,
       headers: {
-        'Retry-After': Math.ceil((resetAt - Date.now()) / 1000).toString(),
+        'Retry-After':       Math.ceil((resetAt - Date.now()) / 1000).toString(),
         'X-RateLimit-Reset': resetAt.toString(),
       },
     }
@@ -89,18 +55,12 @@ export function rateLimitResponse(resetAt: number): NextResponse {
 
 // Respuesta de error genérica para producción
 export function serverErrorResponse(): NextResponse {
-  return NextResponse.json(
-    { error: 'Error interno del servidor' },
-    { status: 500 }
-  )
+  return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
 }
 
 // Respuesta 400 con detalle de validación
 export function validationErrorResponse(message: string): NextResponse {
-  return NextResponse.json(
-    { error: 'Datos inválidos', details: message },
-    { status: 400 }
-  )
+  return NextResponse.json({ error: 'Datos inválidos', details: message }, { status: 400 })
 }
 
 // Guard completo: auth + rate limit en un solo helper
@@ -108,7 +68,7 @@ export async function guardRoute(
   request: Request,
   endpoint: RateLimitKey = 'default'
 ): Promise<{ auth: { userId: string; role: string; vendorId?: string } } | NextResponse> {
-  const ip = getClientIP(request)
+  const ip   = getClientIP(request)
   const path = new URL(request.url).pathname
 
   // 1. Rate limit
@@ -119,8 +79,8 @@ export async function guardRoute(
   }
 
   // 2. Autenticación
-  const auth = await verifyAuth(request)
-  if (!auth) return unauthorizedResponse()
+  const authResult = await verifyAuth(request)
+  if (!authResult) return unauthorizedResponse()
 
-  return { auth }
+  return { auth: authResult }
 }

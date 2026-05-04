@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import {
   verifyAuth,
   unauthorizedResponse,
@@ -9,14 +9,9 @@ import {
   validationErrorResponse,
 } from '@/lib/api-auth'
 import { logServerError, logCampaignChange } from '@/lib/logger'
-
-function getService() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  )
-}
+import { db } from '@/lib/db'
+import { products, vendors } from '@/lib/schema'
+import { getCampaignById, updateCampaignStatus } from '@/lib/queries/campaigns'
 
 const CampaignPatchSchema = z.object({
   semaphore_color: z.enum(['green', 'yellow', 'red']).optional(),
@@ -36,30 +31,39 @@ export async function GET(
   const auth = await verifyAuth(request)
   if (!auth) return unauthorizedResponse()
 
-  const supabase = getService()
   const { id } = params
 
   try {
-    const { data, error } = await supabase
-      .from('campaigns')
-      .select(`
-        *,
-        products(id, name, price, category, images),
-        vendors(id, name, email, whatsapp_number)
-      `)
-      .eq('id', id)
-      .single()
+    const campaign = await getCampaignById(id)
 
-    if (error || !data) {
+    if (!campaign) {
       return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
     }
 
     // Vendor solo puede ver sus propias campañas
-    if (auth.role !== 'admin' && data.vendor_id !== auth.vendorId) {
+    if (auth.role !== 'admin' && campaign.vendor_id !== auth.vendorId) {
       return forbiddenResponse()
     }
 
-    return NextResponse.json({ data })
+    // Obtener producto y vendor relacionados
+    const [productRows, vendorRows] = await Promise.all([
+      campaign.product_id
+        ? db.select({ id: products.id, name: products.name, price: products.price, category: products.category, images: products.images })
+            .from(products).where(eq(products.id, campaign.product_id)).limit(1)
+        : Promise.resolve([]),
+      campaign.vendor_id
+        ? db.select({ id: vendors.id, name: vendors.name, email: vendors.email, whatsapp_number: vendors.whatsapp_number })
+            .from(vendors).where(eq(vendors.id, campaign.vendor_id)).limit(1)
+        : Promise.resolve([]),
+    ])
+
+    return NextResponse.json({
+      data: {
+        ...campaign,
+        products: productRows[0] ?? null,
+        vendors:  vendorRows[0]  ?? null,
+      },
+    })
   } catch (err) {
     logServerError(err, `GET /api/campaigns/${id}`)
     return serverErrorResponse()
@@ -88,29 +92,17 @@ export async function PATCH(
     return validationErrorResponse(parsed.error.issues[0].message)
   }
 
-  const supabase = getService()
-
   try {
-    const updates: Record<string, unknown> = {
-      ...parsed.data,
-      updated_at: new Date().toISOString(),
-    }
+    const updates: Parameters<typeof updateCampaignStatus>[1] = { ...parsed.data }
 
-    // Si se pausa → registrar timestamp
     if (parsed.data.status === 'paused') {
-      updates.paused_at = new Date().toISOString()
+      updates.paused_at = new Date()
     }
 
-    const { data, error } = await supabase
-      .from('campaigns')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
+    const data = await updateCampaignStatus(id, updates)
 
-    if (error) {
-      logServerError(error, `PATCH /api/campaigns/${id}`)
-      return serverErrorResponse()
+    if (!data) {
+      return NextResponse.json({ error: 'Campaña no encontrada' }, { status: 404 })
     }
 
     logCampaignChange(id, `status_changed_to_${parsed.data.status ?? parsed.data.semaphore_color}`, auth.userId)

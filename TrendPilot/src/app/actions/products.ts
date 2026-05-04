@@ -2,8 +2,10 @@
 
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { createSupabaseServer } from '@/lib/supabase-server'
+import { auth } from '@/lib/auth'
 import { logServerError } from '@/lib/logger'
+import { createProduct } from '@/lib/queries/products'
+import { getVendorById } from '@/lib/queries/vendors'
 
 const ProductFormSchema = z.object({
   name:        z.string().min(3, 'El nombre debe tener al menos 3 caracteres').max(200).trim(),
@@ -32,45 +34,35 @@ export async function createProductAction(
 
   const { name, description, price, category, image_url } = parsed.data
 
-  const supabase = await createSupabaseServer()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Sesión expirada. Inicia sesión de nuevo.' }
+  const session = await auth()
+  if (!session?.user) return { error: 'Sesión expirada. Inicia sesión de nuevo.' }
 
-  // Obtener vendor_id del usuario
-  const { data: vendor } = await supabase
-    .from('vendors')
-    .select('id')
-    .eq('id', user.id)
-    .single()
+  const vendorId = session.user.vendorId
+  if (!vendorId) return { error: 'Solo los vendedores pueden registrar productos.' }
 
+  const vendor = await getVendorById(vendorId)
   if (!vendor) return { error: 'Solo los vendedores pueden registrar productos.' }
 
   const images: string[] = image_url ? [image_url] : []
 
-  const { data: product, error } = await supabase
-    .from('products')
-    .insert({
+  try {
+    const product = await createProduct({
       vendor_id:   vendor.id,
       name,
-      description: description ?? null,
+      description: description ?? undefined,
       price,
-      category:    category ?? null,
+      category:    category ?? undefined,
       images,
-      status:      'pending',
     })
-    .select('id')
-    .single()
 
-  if (error || !product) {
+    // Trigger async scoring — vía API (fire-and-forget)
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/products/${product.id}/score`, {
+      method: 'POST',
+    }).catch(() => {/* silencioso */})
+  } catch (error) {
     logServerError(error, 'createProductAction/insert')
     return { error: 'No se pudo registrar el producto. Intenta de nuevo.' }
   }
-
-  // Trigger async scoring — vía API (fire-and-forget)
-  const productId = product.id
-  fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/products/${productId}/score`, {
-    method: 'POST',
-  }).catch(() => {/* silencioso */})
 
   redirect('/dashboard/products?created=true')
 }
