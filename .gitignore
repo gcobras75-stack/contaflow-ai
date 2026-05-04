@@ -1,2 +1,26 @@
-# Local Netlify folder
+# ============================================================
+# Repositorio multi-proyecto — .gitignore raíz
+# ============================================================
+
+# Config local de Claude Code — nunca commitear, contiene rutas del dev
+.claude/
+**/.claude/
+
+# Docs internas privadas
+STRATEGY.md
+
+# Netlify local
 .netlify
+
+# Secretos / env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

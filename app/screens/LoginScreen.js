@@ -62,7 +62,7 @@ export default function LoginScreen({ onLogin }) {
         return;
       }
 
-      onLogin(usuario.rol);
+      onLogin();
     } catch {
       setError('Error de conexión. Intenta de nuevo.');
     } finally {

@@ -30,12 +30,15 @@ const BANCOS_MX = [
   'Scotiabank', 'Inbursa', 'Azteca', 'BanBajío', 'Otro',
 ];
 
+const WEB_BASE = process.env.EXPO_PUBLIC_WEB_URL ?? 'https://contaflow.mx';
+
 export default function SubirEstadoCuenta({ onBack }) {
   const [etapa, setEtapa] = useState('inicio');
   const [archivo, setArchivo] = useState(null);
   const [bancoSel, setBancoSel] = useState('');
   const [periodo, setPeriodo] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [analisisIA, setAnalisisIA] = useState('');
 
   const seleccionarArchivo = async () => {
     try {
@@ -122,7 +125,30 @@ export default function SubirEstadoCuenta({ onBack }) {
         return;
       }
 
-      await new Promise(r => setTimeout(r, 2000));
+      // Análisis IA
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const { data: usr } = await supabase
+          .from('usuarios').select('empresa_id').eq('id', user.id).single();
+
+        const resIA = await fetch(`${WEB_BASE}/api/analizar-estado`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token ?? ''}`,
+          },
+          body: JSON.stringify({
+            empresa_id: usuario?.empresa_id ?? usr?.empresa_id,
+            banco: bancoSel,
+            periodo,
+          }),
+        });
+        const jsonIA = await resIA.json();
+        if (jsonIA.analisis) setAnalisisIA(jsonIA.analisis);
+      } catch {
+        // Análisis opcional, no bloquear el flujo
+      }
+
       setEtapa('exito');
     } catch {
       mostrarError('Error de conexión al subir el archivo.');
@@ -130,7 +156,7 @@ export default function SubirEstadoCuenta({ onBack }) {
   };
 
   const mostrarError = (msg) => { setErrorMsg(msg); setEtapa('error'); };
-  const reiniciar = () => { setEtapa('inicio'); setArchivo(null); setBancoSel(''); setErrorMsg(''); };
+  const reiniciar = () => { setEtapa('inicio'); setArchivo(null); setBancoSel(''); setErrorMsg(''); setAnalisisIA(''); };
 
   return (
     <SafeAreaView style={styles.root}>
@@ -232,22 +258,40 @@ export default function SubirEstadoCuenta({ onBack }) {
       )}
 
       {etapa === 'exito' && (
-        <View style={styles.centrado}>
-          <Ionicons name="checkmark-done-circle" size={80} color={C.verde} />
-          <Text style={[styles.title, { color: C.verde }]}>Estado registrado</Text>
-          <Text style={styles.exitoSub}>
-            Banco: {bancoSel}{'\n'}
-            Período: {periodo}{'\n'}
-            Status: Pendiente de análisis
-          </Text>
+        <ScrollView contentContainerStyle={[styles.body, { alignItems: 'stretch' }]}>
+          <View style={{ alignItems: 'center', gap: 8 }}>
+            <Ionicons name="checkmark-done-circle" size={72} color={C.verde} />
+            <Text style={[styles.title, { color: C.verde }]}>Estado registrado</Text>
+            <Text style={styles.exitoSub}>
+              Banco: {bancoSel}{'  ·  '}Período: {periodo}
+            </Text>
+          </View>
+
+          {analisisIA ? (
+            <View style={styles.analisisBox}>
+              <View style={styles.analisisHeader}>
+                <Ionicons name="sparkles" size={16} color={C.morado} />
+                <Text style={styles.analisisTitulo}>Análisis IA · CPC Ricardo Morales</Text>
+              </View>
+              <Text style={styles.analisisTxt}>{analisisIA}</Text>
+            </View>
+          ) : (
+            <View style={[styles.analisisBox, { alignItems: 'center' }]}>
+              <ActivityIndicator size="small" color={C.morado} />
+              <Text style={[styles.analisisTxt, { textAlign: 'center', color: '#6B7280' }]}>
+                Analizando estado de cuenta con IA...
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity style={styles.btnPrimary} onPress={reiniciar}>
             <Ionicons name="add-circle-outline" size={22} color={C.blanco} />
             <Text style={styles.btnPrimaryTxt}>Subir otro estado</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onBack} style={{ marginTop: 8 }}>
+          <TouchableOpacity onPress={onBack} style={{ alignSelf: 'center', marginTop: 4 }}>
             <Text style={styles.link}>Volver al inicio</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       )}
 
       {etapa === 'error' && (
@@ -328,4 +372,13 @@ const styles = StyleSheet.create({
   loadingTxt: { color: C.azul, fontWeight: '600', marginTop: 12 },
   exitoSub: { color: '#6B7280', textAlign: 'center', lineHeight: 22 },
   errorMsg: { color: '#6B7280', textAlign: 'center', lineHeight: 20 },
+  analisisBox: {
+    backgroundColor: C.blanco, borderRadius: 12, padding: 14, gap: 10,
+    borderLeftWidth: 3, borderLeftColor: C.morado,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  analisisHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  analisisTitulo: { fontSize: 12, fontWeight: '700', color: C.morado },
+  analisisTxt: { fontSize: 13, color: C.texto, lineHeight: 20 },
 });

@@ -1,15 +1,36 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+const LOGIN_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('TIMEOUT')), ms);
+    promise.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 export default function LoginPage() {
-  const router = useRouter();
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,11 +43,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { data: authData, error: authError } =
-        await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await withTimeout(
+        supabase.auth.signInWithPassword({
           email: email.trim().toLowerCase(),
           password,
-        });
+        }),
+        LOGIN_TIMEOUT_MS,
+      );
 
       if (authError) {
         setError('Correo o contraseña incorrectos.');
@@ -34,11 +57,16 @@ export default function LoginPage() {
         return;
       }
 
-      const { data: usuario, error: userError } = await supabase
-        .from('usuarios')
-        .select('rol')
-        .eq('id', authData.user.id)
-        .single();
+      const { data: usuario, error: userError } = await withTimeout(
+        Promise.resolve(
+          supabase
+            .from('usuarios')
+            .select('rol')
+            .eq('id', authData.user.id)
+            .single(),
+        ),
+        LOGIN_TIMEOUT_MS,
+      );
 
       if (userError || !usuario) {
         setError('Usuario no configurado. Contacta a soporte.');
@@ -47,16 +75,29 @@ export default function LoginPage() {
         return;
       }
 
-      if (usuario.rol !== 'contador') {
+      if (usuario.rol !== 'contador' && usuario.rol !== 'superadmin') {
         setError('Acceso denegado. Usa la app móvil para acceder como empresa.');
         await supabase.auth.signOut();
         setLoading(false);
         return;
       }
 
-      router.push('/dashboard');
-    } catch {
-      setError('Error de conexión. Intenta de nuevo.');
+      // Respetar ?redirect si existe, sino redirigir por rol
+      const redirectParam = searchParams.get('redirect');
+      const defaultDest = usuario.rol === 'superadmin' ? '/admin' : '/dashboard';
+      const destination = redirectParam && redirectParam.startsWith('/') ? redirectParam : defaultDest;
+
+      setSuccess(true);
+
+      // Hard redirect: fuerza recarga completa para que las cookies
+      // de sesión lleguen correctamente al middleware del servidor.
+      window.location.href = destination;
+    } catch (err) {
+      if (err instanceof Error && err.message === 'TIMEOUT') {
+        setError('El servidor no responde. Verifica tu conexión o intenta en unos minutos.');
+      } else {
+        setError('Error de conexión. Intenta de nuevo.');
+      }
       setLoading(false);
     }
   };
@@ -144,7 +185,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-[#00A651] hover:bg-[#008F45] disabled:opacity-60 text-white font-bold py-3 rounded-lg transition-colors text-sm"
             >
-              {loading ? 'Verificando...' : 'Entrar'}
+              {success ? 'Entrando...' : loading ? 'Verificando...' : 'Entrar'}
             </button>
           </form>
         </div>
