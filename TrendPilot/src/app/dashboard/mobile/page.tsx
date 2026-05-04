@@ -197,12 +197,7 @@ export default function MobileDashboard() {
                   {/* Imagen grande del producto */}
                   {(alert.type === 'product' || alert.type === 'campaign') && (
                     <div className="h-[120px] overflow-hidden w-full">
-                      <ProductImage
-                        keyword={alert.keyword}
-                        size={0}
-                        radius={0}
-                        className="!w-full !h-full !rounded-none"
-                      />
+                      <ProductImage keyword={alert.keyword} size="hero" />
                     </div>
                   )}
 
@@ -263,8 +258,8 @@ export default function MobileDashboard() {
                   onClick={() => router.push(`/dashboard/campaigns/${camp.id}`)}
                   className="w-full bg-brand-card border border-brand-border rounded-2xl p-4 flex items-center gap-4 hover:border-brand-primary/30 active:scale-[0.98] transition-all"
                 >
-                  {/* Imagen 64x64 */}
-                  <ProductImage keyword={camp.keyword} size={64} radius={12} className="shrink-0" />
+                  {/* Imagen 72x72 */}
+                  <ProductImage keyword={camp.keyword} size={72} radius={12} className="shrink-0" />
 
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-sm font-semibold text-brand-text truncate">{camp.name}</p>

@@ -105,8 +105,8 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
         <ProductImage
           keyword={campaign.product_name}
           src={campaign.product_image}
-          size={56}
-          radius={10}
+          size={80}
+          radius={12}
           className="shrink-0 mt-0.5"
         />
 

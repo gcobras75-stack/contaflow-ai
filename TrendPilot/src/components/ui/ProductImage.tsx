@@ -39,12 +39,24 @@ function getIcon(keyword: string) {
   return Package
 }
 
+// ─── Tipos ───────────────────────────────────────────────────────────────────
+
+export type ImageSize = 'sm' | 'md' | 'lg' | 'hero' | number
+
+const NAMED_SIZES: Record<'sm' | 'md' | 'lg', number> = { sm: 40, md: 72, lg: 120 }
+
+function resolvePixelSize(size: ImageSize): number | null {
+  if (size === 'hero') return null
+  if (typeof size === 'number') return size
+  return NAMED_SIZES[size]
+}
+
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 interface ProductImageProps {
   keyword:    string
   src?:       string | null
-  size?:      number
+  size?:      ImageSize
   radius?:    number
   className?: string
 }
@@ -52,7 +64,7 @@ interface ProductImageProps {
 export function ProductImage({
   keyword,
   src,
-  size   = 72,
+  size   = 'md',
   radius = 12,
   className,
 }: ProductImageProps) {
@@ -87,18 +99,55 @@ export function ProductImage({
   const Icon      = getIcon(keyword || '')
   const initials  = (keyword || '?').split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')
 
+  const px     = resolvePixelSize(size)
+  const isHero = px === null
+
+  // ── Hero mode: ocupa 100% del contenedor padre ────────────────────────────
+  if (isHero) {
+    if (!failed && imgSrc) {
+      return (
+        <div className={cn('w-full h-full overflow-hidden', className)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imgSrc}
+            alt={keyword}
+            loading="lazy"
+            className="w-full h-full object-cover block"
+            onError={() => { setImgSrc(null); setFailed(true) }}
+          />
+        </div>
+      )
+    }
+    if (loading) {
+      return <div className={cn('w-full h-full skeleton', className)} />
+    }
+    // Placeholder hero
+    return (
+      <div
+        className={cn('w-full h-full flex flex-col items-center justify-center', className)}
+        style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
+      >
+        <Icon size={40} className="text-white/70 mb-1" />
+        <span className="text-white/50 font-bold text-sm tracking-wide">{initials}</span>
+      </div>
+    )
+  }
+
+  // ── Tamaño fijo ───────────────────────────────────────────────────────────
   const boxStyle: React.CSSProperties = {
-    width: size, height: size, borderRadius: radius, flexShrink: 0,
+    width: px, height: px, borderRadius: radius, flexShrink: 0,
   }
 
   // Imagen cargada
   if (!failed && imgSrc) {
     return (
       <div style={boxStyle} className={cn('overflow-hidden shrink-0', className)}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imgSrc}
           alt={keyword}
-          style={{ width: size, height: size, objectFit: 'cover', display: 'block' }}
+          loading="lazy"
+          style={{ width: px, height: px, objectFit: 'cover', display: 'block' }}
           onError={() => { setImgSrc(null); setFailed(true) }}
         />
       </div>
@@ -116,8 +165,8 @@ export function ProductImage({
       style={{ ...boxStyle, background: `linear-gradient(135deg, ${c1}, ${c2})` }}
       className={cn('flex flex-col items-center justify-center shrink-0', className)}
     >
-      <Icon size={Math.round(size * 0.32)} className="text-white/75 mb-0.5" />
-      <span className="text-white/60 font-bold leading-none" style={{ fontSize: Math.round(size * 0.14) }}>
+      <Icon size={Math.round(px * 0.32)} className="text-white/75 mb-0.5" />
+      <span className="text-white/60 font-bold leading-none" style={{ fontSize: Math.round(px * 0.14) }}>
         {initials}
       </span>
     </div>

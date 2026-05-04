@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Plus, Radio, TrendingUp, AlertTriangle, TrendingDown, Coins } from 'lucide-react'
+import { Plus, Radio, TrendingUp, AlertTriangle, TrendingDown, Coins, BarChart2 } from 'lucide-react'
 import { CampaignCard, type CampaignCardData } from '@/components/campaigns/CampaignCard'
 
 // ─── Mock data realista — 5 verde, 3 amarillo, 3 rojo ─────────────────────────
@@ -98,10 +98,17 @@ const MOCK_CAMPAIGNS: CampaignCardData[] = [
 type SemColor = 'green' | 'yellow' | 'red' | 'paused'
 
 export default function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState<CampaignCardData[]>(MOCK_CAMPAIGNS)
-  const [loading, setLoading]     = useState(false)
+  const [campaigns,   setCampaigns]   = useState<CampaignCardData[]>(MOCK_CAMPAIGNS)
+  const [loading,     setLoading]     = useState(false)
+  const [smOverview,  setSmOverview]  = useState<{ total_spend: number; total_conversions: number; avg_roas: number; avg_ctr: number; mock?: boolean } | null>(null)
 
   useEffect(() => {
+    // Cargar overview de Supermetrics en background
+    fetch('/api/analytics/overview')
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setSmOverview(data) })
+      .catch(() => {/* silencioso */})
+
     async function load() {
       setLoading(true)
       try {
@@ -215,6 +222,35 @@ export default function CampaignsPage() {
           <p className="text-xl font-bold font-mono gradient-text">{fmt(growthFundTotal)}</p>
         </div>
       </div>
+
+      {/* Widget Supermetrics — métricas reales */}
+      {smOverview && (
+        <div className="bg-brand-card border border-brand-primary/20 rounded-2xl p-4 animate-fade-in" style={{ animationDelay: '80ms' }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <BarChart2 size={13} className="text-brand-primary" />
+              <p className="text-xs font-semibold text-brand-text">Métricas en vivo — Supermetrics</p>
+              {smOverview.mock && <span className="text-[9px] px-1.5 py-0.5 bg-brand-yellow/15 text-brand-yellow rounded-full">DEMO</span>}
+            </div>
+            <Link href="/dashboard/analytics" className="text-[10px] text-brand-primary hover:underline">
+              Ver analytics completo →
+            </Link>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: 'Gastado real',    value: fmt(smOverview.total_spend),       color: 'text-brand-text' },
+              { label: 'Generado real',   value: fmt(smOverview.total_spend * smOverview.avg_roas), color: 'text-brand-green' },
+              { label: 'ROAS real',       value: `${smOverview.avg_roas}x`,          color: 'text-brand-primary' },
+              { label: 'CTR real',        value: `${smOverview.avg_ctr}%`,           color: 'text-brand-yellow' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="text-center">
+                <p className={`text-base font-bold font-mono ${color}`}>{value}</p>
+                <p className="text-[9px] text-brand-faint mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Semáforo — 3 columnas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

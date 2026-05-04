@@ -9,6 +9,8 @@ import Link from 'next/link'
 import { formatMXN, getSemaphoreClasses } from '@/utils'
 import type { SemaphoreColor } from '@/types'
 import { SeasonAlertWidget } from '@/components/dashboard/SeasonAlertWidget'
+import { EarlySignalWidget } from '@/components/dashboard/EarlySignalWidget'
+import { GrowthFundWidget } from '@/components/dashboard/GrowthFundWidget'
 import { ProductImage } from '@/components/ui/ProductImage'
 
 const stats = {
@@ -212,7 +214,7 @@ export default function DashboardPage() {
               return (
                 <div key={c.name} className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-transparent ${cfg.bg} hover:border-brand-border transition-all`}>
                   {/* Imagen pequeña del producto */}
-                  <ProductImage keyword={c.keyword} size={36} radius={8} className="shrink-0" />
+                  <ProductImage keyword={c.keyword} size={40} radius={8} className="shrink-0" />
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot} ${c.color === 'green' ? 'animate-pulse' : ''}`} />
                   <span className="flex-1 text-sm text-brand-text truncate font-medium">{c.name}</span>
                   <span className={`text-sm font-bold font-mono ${cfg.text}`}>
@@ -241,8 +243,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* SeasonAlert */}
-      <div className="animate-fade-in" style={{ animationDelay: '200ms' }}>
+      {/* EarlySignal + GrowthFund + SeasonAlert */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 animate-fade-in" style={{ animationDelay: '200ms' }}>
+        <EarlySignalWidget />
+        <GrowthFundWidget />
         <SeasonAlertWidget />
       </div>
 
