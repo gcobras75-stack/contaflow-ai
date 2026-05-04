@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { Sidebar } from '@/components/dashboard/Sidebar'
 import { Header } from '@/components/dashboard/Header'
+import { MobileRedirect } from '@/components/dashboard/MobileRedirect'
 import { createSupabaseServer } from '@/lib/supabase-server'
 import { createClient } from '@supabase/supabase-js'
 
@@ -52,6 +53,7 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-brand-bg">
+      <MobileRedirect />
       <Sidebar role={profile?.role ?? 'vendor'} />
       <Header
         green={semaphore.green}
