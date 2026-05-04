@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { RefreshCw, TrendingUp, Zap } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { RefreshCw, TrendingUp, Zap, Target } from 'lucide-react'
 import { TrendCard } from '@/components/trends/TrendCard'
 import { cn } from '@/utils'
 
@@ -26,9 +27,11 @@ const sourceLabel: Record<DataSource, { text: string; color: string }> = {
 }
 
 export default function TrendsPage() {
+  const router = useRouter()
   const [trends, setTrends] = useState<TrendItem[]>([])
   const [source, setSource] = useState<DataSource>('cache')
   const [loading, setLoading] = useState(true)
+  const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'all' | 'EXPLOSIVO' | 'EN ALERTA' | 'ESTABLE'>('all')
 
@@ -50,6 +53,20 @@ export default function TrendsPage() {
 
   useEffect(() => { fetchTrends() }, [fetchTrends])
 
+  const searchVendors = useCallback(async () => {
+    setSearching(true)
+    try {
+      await fetch('/api/lead-finder', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ use_trends: true }),
+      })
+      router.push('/dashboard/lead-finder')
+    } catch {
+      router.push('/dashboard/lead-finder')
+    }
+  }, [router])
+
   const filtered = filter === 'all'
     ? trends
     : trends.filter((t) => t.badge === filter)
@@ -69,14 +86,24 @@ export default function TrendsPage() {
             Tendencias en tiempo real de MercadoLibre México
           </p>
         </div>
-        <button
-          onClick={fetchTrends}
-          disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-muted hover:text-white hover:border-brand-primary transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
-          Actualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={searchVendors}
+            disabled={searching || loading}
+            className="flex items-center gap-2 px-4 py-2 btn-gradient text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-opacity"
+          >
+            <Target size={14} className={cn(searching && 'animate-pulse')} />
+            {searching ? 'Buscando...' : 'Buscar vendedores'}
+          </button>
+          <button
+            onClick={fetchTrends}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-brand-surface border border-brand-border rounded-xl text-sm text-brand-muted hover:text-white hover:border-brand-primary transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Stats rápidas */}

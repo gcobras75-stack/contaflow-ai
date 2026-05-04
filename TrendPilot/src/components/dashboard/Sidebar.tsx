@@ -8,41 +8,58 @@ import {
   TrendingUp, Zap, Star, Search, Megaphone, FlaskConical,
   Radio, RotateCcw, MessageSquare, Users, Coins, Shield,
   Eye, Calendar, Settings, LayoutDashboard, ChevronLeft, ChevronRight,
+  BarChart2, UserCheck, Rocket, TestTube2, Target, Share2,
 } from 'lucide-react'
 
 const moduleGroups = [
   {
-    label: 'Análisis',
+    label: 'Inteligencia',
     modules: [
-      { id: 1,  name: 'TrendRadar',   label: 'Tendencias',     href: '/dashboard/trends',    icon: TrendingUp },
-      { id: 2,  name: 'EarlySignal',  label: 'Señales Early',  href: '/dashboard/early',     icon: Zap },
-      { id: 3,  name: 'ProductScore', label: 'Productos',      href: '/dashboard/products',  icon: Star },
-      { id: 4,  name: 'SellerHunter', label: 'Vendedores',     href: '/dashboard/vendors',   icon: Search },
+      { id: 1,  name: 'TrendRadar',   label: 'TrendRadar',    href: '/dashboard/trends',       icon: TrendingUp },
+      { id: 2,  name: 'EarlySignal',  label: 'EarlySignal',   href: '/dashboard/early',        icon: Zap },
+      { id: 13, name: 'MarketSpy',    label: 'MarketSpy',     href: '/dashboard/market-spy',   icon: Eye },
+      { id: 15, name: 'Analytics',    label: 'Analytics',     href: '/dashboard/analytics',    icon: BarChart2 },
     ],
   },
   {
     label: 'Campañas',
     modules: [
-      { id: 5,  name: 'AdBuilder',    label: 'Crear Anuncios', href: '/dashboard/ads',         icon: Megaphone },
-      { id: 6,  name: 'SplitTest',    label: 'A/B Testing',   href: '/dashboard/split',       icon: FlaskConical },
-      { id: 7,  name: 'CampaignPilot',label: 'Campañas',      href: '/dashboard/campaigns',   icon: Radio },
+      { id: 7,  name: 'CampaignPilot',label: 'CampaignPilot', href: '/dashboard/campaigns',    icon: Radio },
+      { id: 5,  name: 'AdBuilder',    label: 'AdBuilder',     href: '/dashboard/ads',          icon: Megaphone },
+      { id: 6,  name: 'SplitTest',    label: 'SplitTest',     href: '/dashboard/split',        icon: FlaskConical },
+      { id: 8,  name: 'ReachBack',    label: 'ReachBack',     href: '/dashboard/retargeting',  icon: RotateCcw },
     ],
   },
   {
-    label: 'Retención',
+    label: 'Vendedores',
     modules: [
-      { id: 8,  name: 'ReachBack',    label: 'Retargeting',   href: '/dashboard/retargeting', icon: RotateCcw },
-      { id: 9,  name: 'DirectPilot',  label: 'WhatsApp',      href: '/dashboard/whatsapp',    icon: MessageSquare },
-      { id: 10, name: 'InfluMatch',   label: 'Influencers',   href: '/dashboard/influencers', icon: Users },
+      { id: 0,  name: 'Vendors',      label: 'Vendors',       href: '/dashboard/vendors',      icon: UserCheck },
+      { id: 18, name: 'LeadFinder',   label: 'LeadFinder',    href: '/dashboard/lead-finder',  icon: Target },
+      { id: 3,  name: 'ProductScore', label: 'Productos',     href: '/dashboard/products',     icon: Star },
+      { id: 10, name: 'InfluMatch',   label: 'InfluMatch',    href: '/dashboard/influmatch',   icon: Users },
+      { id: 4,  name: 'SellerHunter', label: 'SellerHunter',  href: '/dashboard/seller-hunter',icon: Search },
     ],
   },
   {
     label: 'Finanzas',
     modules: [
-      { id: 11, name: 'GrowthFund',   label: 'Comisiones',    href: '/dashboard/commissions', icon: Coins },
-      { id: 12, name: 'TrustScore',   label: 'Reputación',    href: '/dashboard/trust',       icon: Shield },
-      { id: 13, name: 'MarketSpy',    label: 'Competencia',   href: '/dashboard/market',      icon: Eye },
-      { id: 14, name: 'SeasonAlert',  label: 'Temporadas',    href: '/dashboard/seasons',     icon: Calendar },
+      { id: 11, name: 'GrowthFund',   label: 'Comisiones',    href: '/dashboard/commissions',  icon: Coins },
+      { id: 12, name: 'TrustScore',   label: 'TrustScore',    href: '/dashboard/trust',        icon: Shield },
+      { id: 14, name: 'SeasonAlert',  label: 'SeasonAlert',   href: '/dashboard/seasons',      icon: Calendar },
+    ],
+  },
+  {
+    label: 'Comunicación',
+    modules: [
+      { id: 9,  name: 'DirectPilot',  label: 'WhatsApp',      href: '/dashboard/whatsapp',     icon: MessageSquare },
+      { id: 19, name: 'SocialProspect',label: 'SocialProspect',href: '/dashboard/social-content',icon: Share2 },
+    ],
+  },
+  {
+    label: 'Sistema',
+    modules: [
+      { id: 16, name: 'Tests',        label: 'Pruebas E2E',   href: '/dashboard/test',         icon: TestTube2 },
+      { id: 17, name: 'Checklist',    label: 'Launch Check',  href: '/dashboard/launch-checklist', icon: Rocket },
     ],
   },
 ]

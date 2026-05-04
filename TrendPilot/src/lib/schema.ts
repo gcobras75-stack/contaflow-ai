@@ -16,6 +16,10 @@ export const roleEnum            = pgEnum('user_role',        ['admin', 'vendor'
 export const planEnum            = pgEnum('plan_type',        ['despegue', 'piloto', 'comandante', 'flota'])
 export const creativeTypeEnum    = pgEnum('creative_type',    ['image', 'video', 'carousel'])
 export const influencerStatusEnum = pgEnum('influencer_status', ['contacted', 'active', 'rejected'])
+export const leadSourceEnum      = pgEnum('lead_source',      ['ml', 'maps', 'manual'])
+export const leadStatusEnum      = pgEnum('lead_status',      ['new', 'contacted', 'responded', 'converted', 'discarded'])
+export const leadTempEnum        = pgEnum('lead_temperature',  ['hot', 'warm', 'cold'])
+export const leadChannelEnum     = pgEnum('lead_channel',     ['whatsapp', 'email', 'ml'])
 
 // ─── profiles (usuarios del sistema) ─────────────────────────────────────────
 
@@ -46,6 +50,8 @@ export const vendors = pgTable('vendors', {
   total_sales:           integer('total_sales').notNull().default(0),           // centavos
   total_commissions_paid: integer('total_commissions_paid').notNull().default(0), // centavos
   plan:                  planEnum('plan').notNull().default('despegue'),
+  contract_status:       text('contract_status'),          // 'pending' | 'signed'
+  contract_submission_id: text('contract_submission_id'),  // ID de DocuSeal
   created_at:            timestamp('created_at').notNull().defaultNow(),
 }, (t) => [
   index('vendors_email_idx').on(t.email),
@@ -184,20 +190,94 @@ export const influencers = pgTable('influencers', {
 export const competitors = pgTable('competitors', {
   id:                 uuid('id').primaryKey().defaultRandom(),
   name:               text('name').notNull(),
+  description:        text('description'),
   platform_url:       text('platform_url'),
   estimated_vendors:  integer('estimated_vendors'),
   active_campaigns:   integer('active_campaigns'),
   top_products:       jsonb('top_products').$type<Record<string, unknown>>(),
+  weekly_changes:     jsonb('weekly_changes').$type<Record<string, unknown>>(),
   last_analyzed_at:   timestamp('last_analyzed_at').defaultNow(),
+  created_at:         timestamp('created_at').notNull().defaultNow(),
 })
+
+// ─── whatsapp_messages ───────────────────────────────────────────────────────
+
+export const whatsappMessages = pgTable('whatsapp_messages', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  vendor_id:  uuid('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
+  phone_to:   text('phone_to').notNull(),
+  message:    text('message').notNull(),
+  // welcome | product_approved | product_rejected | campaign_red | campaign_green | season_alert | weekly_report | manual
+  type:       text('type').notNull().default('manual'),
+  status:     text('status').notNull().default('sent'),  // sent | failed
+  twilio_sid: text('twilio_sid'),
+  error:      text('error'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('wa_messages_vendor_idx').on(t.vendor_id),
+  index('wa_messages_created_idx').on(t.created_at),
+])
+
+// ─── reachback_configs ────────────────────────────────────────────────────────
+
+export const reachbackConfigs = pgTable('reachback_configs', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  campaign_id:     uuid('campaign_id').references(() => campaigns.id, { onDelete: 'cascade' }),
+  vendor_id:       uuid('vendor_id').references(() => vendors.id),
+  config:          jsonb('config').$type<Record<string, unknown>>(),
+  metrics:         jsonb('metrics').$type<Record<string, unknown>>(),
+  last_updated_at: timestamp('last_updated_at').notNull().defaultNow(),
+  created_at:      timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('reachback_campaign_idx').on(t.campaign_id),
+  index('reachback_vendor_idx').on(t.vendor_id),
+])
+
+// ─── leads ────────────────────────────────────────────────────────────────────
+
+export const leads = pgTable('leads', {
+  id:                uuid('id').primaryKey().defaultRandom(),
+  source:            leadSourceEnum('source').notNull().default('ml'),
+  seller_id:         text('seller_id').notNull(),           // ML seller id o Google Place ID
+  seller_name:       text('seller_name').notNull(),
+  seller_nickname:   text('seller_nickname'),
+  product_name:      text('product_name').notNull(),
+  product_url:       text('product_url'),
+  product_thumbnail: text('product_thumbnail'),
+  product_price:     integer('product_price').notNull().default(0),   // centavos
+  estimated_sales:   integer('estimated_sales').notNull().default(0),
+  ml_level:          text('ml_level'),                      // nivel reputación ML
+  city:              text('city'),
+  phone:             text('phone'),
+  email:             text('email'),
+  lead_score:        integer('lead_score').notNull().default(0),
+  lead_temperature:  leadTempEnum('lead_temperature').notNull().default('cold'),
+  status:            leadStatusEnum('status').notNull().default('new'),
+  contact_channel:   leadChannelEnum('contact_channel'),
+  trend_keyword:     text('trend_keyword'),
+  proposal_text:     text('proposal_text'),
+  proposal_sent_at:  timestamp('proposal_sent_at'),
+  response_text:     text('response_text'),
+  response_at:       timestamp('response_at'),
+  vendor_id:         uuid('vendor_id').references(() => vendors.id, { onDelete: 'set null' }),
+  created_at:        timestamp('created_at').notNull().defaultNow(),
+  updated_at:        timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('leads_seller_id_idx').on(t.seller_id),
+  index('leads_status_idx').on(t.status),
+  index('leads_score_idx').on(t.lead_score),
+  index('leads_created_idx').on(t.created_at),
+])
 
 // ─── Relations ───────────────────────────────────────────────────────────────
 
 export const vendorRelations = relations(vendors, ({ many }) => ({
-  products:    many(products),
-  campaigns:   many(campaigns),
-  commissions: many(commissions),
-  adCreatives: many(adCreatives),
+  products:         many(products),
+  campaigns:        many(campaigns),
+  commissions:      many(commissions),
+  adCreatives:      many(adCreatives),
+  reachbackConfigs: many(reachbackConfigs),
+  leads:            many(leads),
 }))
 
 export const productRelations = relations(products, ({ one, many }) => ({
@@ -224,4 +304,13 @@ export const adCreativeRelations = relations(adCreatives, ({ one }) => ({
 
 export const profileRelations = relations(profiles, ({ one }) => ({
   vendor: one(vendors, { fields: [profiles.vendor_id], references: [vendors.id] }),
+}))
+
+export const reachbackConfigRelations = relations(reachbackConfigs, ({ one }) => ({
+  campaign: one(campaigns, { fields: [reachbackConfigs.campaign_id], references: [campaigns.id] }),
+  vendor:   one(vendors,   { fields: [reachbackConfigs.vendor_id],   references: [vendors.id] }),
+}))
+
+export const leadRelations = relations(leads, ({ one }) => ({
+  vendor: one(vendors, { fields: [leads.vendor_id], references: [vendors.id] }),
 }))
