@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
 // Rutas accesibles sin sesión activa
-const PUBLIC_PATHS = ['/login', '/register', '/api/webhook-mp', '/api/auth']
+const PUBLIC_PATHS = ['/login', '/register', '/api/webhook-mp', '/api/auth', '/p/']
 
 // Solo superadmin puede acceder a estas rutas
 const SUPERADMIN_PATHS = ['/dashboard/franquicia']

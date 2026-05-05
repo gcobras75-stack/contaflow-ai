@@ -513,6 +513,86 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* ── MISIÓN — siempre del lado del cliente ─────────────────────── */}
+        <section style={s({ padding: '80px 24px', borderTop: '1px solid rgba(255,255,255,0.05)', background: 'rgba(0,102,255,0.03)' })}>
+          <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 48, alignItems: 'center' }}>
+            <div>
+              <p style={{ color: '#00FF88', fontSize: 12, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 12 }}>Nuestra misión</p>
+              <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 40px)', fontWeight: 800, lineHeight: 1.15, marginBottom: 16, letterSpacing: '-1px' }}>
+                TrendPilot siempre está<br />del lado del{' '}
+                <span style={{ background: 'linear-gradient(135deg,#00FF88,#0066FF)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                  cliente
+                </span>
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(248,250,252,0.6)', lineHeight: 1.75 }}>
+                Creemos que el marketing más poderoso no engaña. Comparamos productos con honestidad radical, incluimos las desventajas, declaramos nuestras comisiones, y ganamos solo cuando ayudamos de verdad.
+              </p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { emoji: '🔍', text: 'Comparamos sin favoritismos — aunque perdamos comisión' },
+                { emoji: '💬', text: 'Incluimos opiniones negativas — son las más útiles' },
+                { emoji: '💡', text: 'Declaramos nuestras comisiones siempre — sin letra chica' },
+                { emoji: '🤝', text: 'Ganamos solo si te ayudamos — nuestro éxito depende del tuyo' },
+              ].map(({ emoji, text }) => (
+                <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 18px', background: '#111827', border: '1px solid #1E293B', borderRadius: 16 }}>
+                  <span style={{ fontSize: 22 }}>{emoji}</span>
+                  <span style={{ fontSize: 14, color: 'rgba(248,250,252,0.75)', lineHeight: 1.5 }}>{text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── COMPARADORES EN TENDENCIA ─────────────────────────────────── */}
+        <section style={s({ padding: '80px 24px', maxWidth: 1100, margin: '0 auto' })}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <p style={{ color: '#0066FF', fontSize: 13, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 12 }}>Comparadores</p>
+            <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 800, letterSpacing: '-1px', marginBottom: 12 }}>
+              Descubre los más buscados hoy
+            </h2>
+            <p style={{ fontSize: 15, color: 'rgba(248,250,252,0.45)' }}>Comparamos precios reales sin favoritismos. Declaramos comisiones siempre.</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
+            {[
+              { slug: 'audifonos-bluetooth',  emoji: '🎧', name: 'Audífonos Bluetooth',  category: 'Electrónicos',       trend: 94, searches: '8,420', price: '$599' },
+              { slug: 'termo-stanley-mini',   emoji: '🧊', name: 'Termos Stanley',        category: 'Hogar y Cocina',     trend: 88, searches: '5,630', price: '$489' },
+              { slug: 'crema-colageno',       emoji: '✨', name: 'Crema de Colágeno',     category: 'Belleza',            trend: 79, searches: '4,210', price: '$219' },
+              { slug: 'cargador-inalambrico', emoji: '⚡', name: 'Cargadores Inalámbricos',category: 'Electrónicos',     trend: 85, searches: '3,890', price: '$299' },
+            ].map(({ slug, emoji, name, category, trend, searches, price }) => (
+              <Link
+                key={slug}
+                href={`/p/${slug}`}
+                style={{ display: 'block', background: '#111827', border: '1px solid #1E293B', borderRadius: 20, padding: 24, textDecoration: 'none', transition: 'border-color 0.2s, transform 0.2s' }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget
+                  el.style.borderColor = '#0066FF'
+                  el.style.transform   = 'translateY(-3px)'
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget
+                  el.style.borderColor = '#1E293B'
+                  el.style.transform   = 'translateY(0)'
+                }}
+              >
+                <div style={{ fontSize: 40, marginBottom: 12 }}>{emoji}</div>
+                <div style={{ display: 'inline-block', background: 'rgba(0,102,255,0.12)', border: '1px solid rgba(0,102,255,0.25)', borderRadius: 100, padding: '3px 10px', fontSize: 10, fontWeight: 700, color: '#60A5FA', marginBottom: 10 }}>
+                  🔥 Tendencia {trend}
+                </div>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#F8FAFC', marginBottom: 4 }}>{name}</h3>
+                <p style={{ fontSize: 12, color: 'rgba(248,250,252,0.4)', marginBottom: 12 }}>{category}</p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 12, color: 'rgba(248,250,252,0.35)' }}>{searches} búsquedas hoy</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#00FF88' }}>Desde {price}</span>
+                </div>
+                <div style={{ marginTop: 14, padding: '8px 14px', background: 'rgba(0,102,255,0.1)', borderRadius: 10, fontSize: 12, fontWeight: 600, color: '#0066FF', textAlign: 'center' }}>
+                  Comparar opciones →
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+
         {/* ── FOOTER ────────────────────────────────────────────────────── */}
         <footer style={s({ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '48px 24px 32px' })}>
           <div style={{ maxWidth: 1100, margin: '0 auto' }}>

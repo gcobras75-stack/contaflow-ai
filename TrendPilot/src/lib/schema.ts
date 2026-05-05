@@ -334,3 +334,22 @@ export const reachbackConfigRelations = relations(reachbackConfigs, ({ one }) =>
 export const leadRelations = relations(leads, ({ one }) => ({
   vendor: one(vendors, { fields: [leads.vendor_id], references: [vendors.id] }),
 }))
+
+// ─── affiliate_clicks (comparador público /p/[slug]) ─────────────────────────
+
+export const affiliateClicks = pgTable('affiliate_clicks', {
+  id:                    uuid('id').primaryKey().defaultRandom(),
+  product_slug:          text('product_slug').notNull(),
+  platform_chosen:       text('platform_chosen'),           // mercadolibre | amazon | shopify
+  time_on_page_seconds:  integer('time_on_page_seconds'),
+  cards_hovered:         integer('cards_hovered').notNull().default(0),
+  faq_opened:            boolean('faq_opened').notNull().default(false),
+  profile_selected:      text('profile_selected'),           // ahorrador | rapido | premium
+  affiliate_url_clicked: text('affiliate_url_clicked'),
+  session_id:            text('session_id'),
+  device_type:           text('device_type'),                // mobile | desktop | tablet
+  created_at:            timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('affiliate_clicks_slug_idx').on(t.product_slug),
+  index('affiliate_clicks_created_idx').on(t.created_at),
+])
