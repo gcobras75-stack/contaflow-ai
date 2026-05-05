@@ -24,10 +24,11 @@ const moduleGroups = [
   {
     label: 'Campañas',
     modules: [
-      { id: 7,  name: 'CampaignPilot',label: 'CampaignPilot', href: '/dashboard/campaigns',    icon: Radio },
-      { id: 5,  name: 'AdBuilder',    label: 'AdBuilder',     href: '/dashboard/ads',          icon: Megaphone },
-      { id: 6,  name: 'SplitTest',    label: 'SplitTest',     href: '/dashboard/split',        icon: FlaskConical },
-      { id: 8,  name: 'ReachBack',    label: 'ReachBack',     href: '/dashboard/retargeting',  icon: RotateCcw },
+      { id: 7,  name: 'CampaignPilot',label: 'CampaignPilot',  href: '/dashboard/campaigns',          icon: Radio },
+      { id: 21, name: 'FirstRun',     label: '🚀 Primera Corrida', href: '/dashboard/campaigns/first-run', icon: Rocket, superadminOnly: true },
+      { id: 5,  name: 'AdBuilder',    label: 'AdBuilder',      href: '/dashboard/ads',                icon: Megaphone },
+      { id: 6,  name: 'SplitTest',    label: 'SplitTest',      href: '/dashboard/split',              icon: FlaskConical },
+      { id: 8,  name: 'ReachBack',    label: 'ReachBack',      href: '/dashboard/retargeting',        icon: RotateCcw },
     ],
   },
   {

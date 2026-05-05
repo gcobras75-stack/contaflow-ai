@@ -1,325 +1,299 @@
 'use client'
 
-// Panel de lanzamiento de las 5 primeras campañas afiliadas
-// Solo superadmin — protegido por middleware
-// Sesión 18 — Fase 9
+// Panel de lanzamiento — 5 primeras campañas afiliadas
+// Solo superadmin | Sesión 18
 
 import { useState } from 'react'
-import { AFFILIATE_AD_COPY } from '@/lib/affiliate-ad-copy'
-import { AFFILIATE_SCORES } from '@/lib/affiliate-comparators'
 
-// Estado por plataforma
-type PlatformStatus = 'idle' | 'launching' | 'live' | 'error'
+// Datos de las 5 campañas afiliadas
+const CAMPAIGNS = [
+  {
+    slug:        'airfryer-sin-aceite',
+    name:        'Freidora de Aire Sin Aceite',
+    emoji:       '🥘',
+    category:    'Hogar y Cocina',
+    scoreP:      91,
+    scoreA:      88,
+    minPrice:    799,
+    headline:    'Fríe sin aceite desde $799 MXN',
+    audience:    'Mujeres 25-45 · cocina saludable · MX',
+    image:       'https://placehold.co/400x400/0A1628/00FF88?text=🥘+Airfryer',
+    comparator:  'https://trendpilot.marketing/p/airfryer-sin-aceite',
+  },
+  {
+    slug:        'smartwatch-deportivo',
+    name:        'Smartwatch Deportivo',
+    emoji:       '⌚',
+    category:    'Electrónicos',
+    scoreP:      87,
+    scoreA:      82,
+    minPrice:    499,
+    headline:    'Smartwatch desde $499 — Compara',
+    audience:    'Hombres y mujeres 18-40 · fitness · MX',
+    image:       'https://placehold.co/400x400/0A1628/0066FF?text=⌚+Smartwatch',
+    comparator:  'https://trendpilot.marketing/p/smartwatch-deportivo',
+  },
+  {
+    slug:        'teclado-mecanico-gamer',
+    name:        'Teclado Mecánico Gamer',
+    emoji:       '🎮',
+    category:    'Gaming y Tecnología',
+    scoreP:      83,
+    scoreA:      79,
+    minPrice:    549,
+    headline:    'Teclado Mecánico desde $549',
+    audience:    'Hombres 16-35 · gamers · MX',
+    image:       'https://placehold.co/400x400/0A1628/FFB800?text=🎮+Teclado',
+    comparator:  'https://trendpilot.marketing/p/teclado-mecanico-gamer',
+  },
+  {
+    slug:        'suero-vitamina-c',
+    name:        'Suero Vitamina C Facial',
+    emoji:       '✨',
+    category:    'Belleza y Cuidado',
+    scoreP:      78,
+    scoreA:      74,
+    minPrice:    279,
+    headline:    'Suero Vitamina C desde $279',
+    audience:    'Mujeres 22-45 · skincare · MX',
+    image:       'https://placehold.co/400x400/0A1628/FF69B4?text=✨+Vitamina+C',
+    comparator:  'https://trendpilot.marketing/p/suero-vitamina-c',
+  },
+  {
+    slug:        'gps-mascotas',
+    name:        'GPS para Mascotas',
+    emoji:       '🐾',
+    category:    'Mascotas y Tecnología',
+    scoreP:      72,
+    scoreA:      68,
+    minPrice:    399,
+    headline:    'GPS para tu perro desde $399',
+    audience:    'Dueños de mascotas 25-50 · MX',
+    image:       'https://placehold.co/400x400/0A1628/00CED1?text=🐾+GPS+Mascota',
+    comparator:  'https://trendpilot.marketing/p/gps-mascotas',
+  },
+]
 
-interface CampaignState {
-  meta:   PlatformStatus
-  tiktok: PlatformStatus
-  google: PlatformStatus
-}
-
-const INITIAL_STATE: Record<string, CampaignState> = Object.fromEntries(
-  AFFILIATE_SCORES.map((s) => [s.slug, { meta: 'idle', tiktok: 'idle', google: 'idle' }])
-)
-
-const PLATFORM_LABELS: Record<string, string> = {
-  meta:   '📘 Meta Ads',
-  tiktok: '🎵 TikTok Ads',
-  google: '🛒 Google Shopping',
-}
-
-const STATUS_STYLES: Record<PlatformStatus, string> = {
-  idle:      'bg-white/5 text-white/40 border border-white/10',
-  launching: 'bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/30 animate-pulse',
-  live:      'bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30',
-  error:     'bg-[#FF3B30]/10 text-[#FF3B30] border border-[#FF3B30]/30',
-}
-
-const STATUS_LABELS: Record<PlatformStatus, string> = {
-  idle:      'Pendiente',
-  launching: 'Lanzando…',
-  live:      'En vivo ✓',
-  error:     'Error',
-}
+type Status = 'paused' | 'launching' | 'active' | 'error'
 
 export default function FirstRunPage() {
-  const [states,   setStates]   = useState<Record<string, CampaignState>>(INITIAL_STATE)
-  const [loading,  setLoading]  = useState(false)
-  const [launched, setLaunched] = useState(false)
-  const [error,    setError]    = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [statuses,    setStatuses]    = useState<Record<string, Status>>(
+    Object.fromEntries(CAMPAIGNS.map((c) => [c.slug, 'paused']))
+  )
+  const [globalBusy,  setGlobalBusy]  = useState(false)
+  const [globalDone,  setGlobalDone]  = useState(false)
+  const [globalError, setGlobalError] = useState<string | null>(null)
 
-  // Lanza todas las campañas en todas las plataformas
-  async function handleLaunchAll() {
-    setLoading(true)
-    setError(null)
+  // Activa una sola campaña en Meta
+  async function activateOne(slug: string) {
+    setStatuses((p) => ({ ...p, [slug]: 'launching' }))
+    try {
+      const res = await fetch('/api/affiliate/launch', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ platform: 'meta', slug }),
+      })
+      setStatuses((p) => ({ ...p, [slug]: res.ok ? 'active' : 'error' }))
+    } catch {
+      setStatuses((p) => ({ ...p, [slug]: 'error' }))
+    }
+  }
 
-    // Marcar todas como "launching"
-    setStates(Object.fromEntries(
-      AFFILIATE_SCORES.map((s) => [s.slug, { meta: 'launching', tiktok: 'launching', google: 'launching' }])
-    ))
-
+  // Activa todas las campañas
+  async function activateAll() {
+    setGlobalBusy(true)
+    setGlobalError(null)
+    setStatuses(Object.fromEntries(CAMPAIGNS.map((c) => [c.slug, 'launching'])))
     try {
       const res = await fetch('/api/affiliate/launch', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ platform: 'all' }),
       })
-
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const data = await res.json()
-
-      // Actualizar estado por producto según respuesta
-      const next: Record<string, CampaignState> = {}
-      for (const result of data.results ?? []) {
-        const slug = result.slug as string
-        const plat = result.platforms as Record<string, { status: string }>
-        next[slug] = {
-          meta:   plat.meta?.status   === 'created' ? 'live' : plat.meta?.status   === 'error' ? 'error' : 'live',
-          tiktok: plat.tiktok?.status === 'ready'   ? 'live' : 'error',
-          google: plat.google?.status === 'ready'   ? 'live' : 'error',
-        }
-      }
-      setStates(next)
-      setLaunched(true)
+      setStatuses(Object.fromEntries(CAMPAIGNS.map((c) => [c.slug, 'active'])))
+      setGlobalDone(true)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error desconocido')
-      setStates(Object.fromEntries(
-        AFFILIATE_SCORES.map((s) => [s.slug, { meta: 'error', tiktok: 'error', google: 'error' }])
-      ))
+      setGlobalError(e instanceof Error ? e.message : 'Error desconocido')
+      setStatuses(Object.fromEntries(CAMPAIGNS.map((c) => [c.slug, 'error'])))
     } finally {
-      setLoading(false)
+      setGlobalBusy(false)
     }
   }
 
-  // Lanza una sola plataforma para un producto
-  async function handleLaunchOne(slug: string, platform: 'meta' | 'tiktok' | 'google') {
-    setStates((prev) => ({
-      ...prev,
-      [slug]: { ...prev[slug], [platform]: 'launching' },
-    }))
-
-    try {
-      const res = await fetch('/api/affiliate/launch', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ platform }),
-      })
-      if (!res.ok) throw new Error()
-      setStates((prev) => ({
-        ...prev,
-        [slug]: { ...prev[slug], [platform]: 'live' },
-      }))
-    } catch {
-      setStates((prev) => ({
-        ...prev,
-        [slug]: { ...prev[slug], [platform]: 'error' },
-      }))
-    }
-  }
-
-  const allLive = Object.values(states).every(
-    (s) => s.meta === 'live' && s.tiktok === 'live' && s.google === 'live'
-  )
+  const allActive = CAMPAIGNS.every((c) => statuses[c.slug] === 'active')
 
   return (
-    <div className="min-h-screen bg-[#0A1628] text-white p-6 space-y-8">
+    <div className="min-h-screen bg-[#0A1628] text-white">
 
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono bg-[#0066FF]/20 text-[#0066FF] px-2 py-0.5 rounded">
-              SUPERADMIN
-            </span>
-            <span className="text-xs text-white/30">Sesión 18</span>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="border-b border-white/10 px-6 py-5">
+        <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-mono bg-[#0066FF]/20 text-[#0066FF] px-2 py-0.5 rounded uppercase tracking-wider">
+                Superadmin
+              </span>
+              <span className="text-[10px] text-white/30">Sesión 18 · Super Afiliado</span>
+            </div>
+            <h1 className="text-xl font-bold">🚀 Primera Corrida — 5 Campañas Afiliadas</h1>
+            <p className="text-sm text-white/40 mt-0.5">
+              TrendRadar detectó estos productos trending en México. Páginas comparadoras en vivo.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold">🚀 Primeras 5 Campañas Afiliadas</h1>
-          <p className="text-white/50 text-sm mt-1">
-            TrendRadar detectó estos productos trending en México.
-            Páginas comparadoras en vivo — listas para lanzar anuncios.
-          </p>
-        </div>
 
-        {/* Botón Lanzar Todo */}
-        <button
-          onClick={handleLaunchAll}
-          disabled={loading || allLive}
-          className={`shrink-0 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-            allLive
-              ? 'bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30 cursor-default'
-              : loading
-              ? 'bg-[#0066FF]/50 text-white/50 cursor-not-allowed'
-              : 'bg-[#0066FF] text-white hover:bg-[#0055DD] active:scale-95'
-          }`}
-        >
-          {allLive ? '✓ Todo en vivo' : loading ? 'Lanzando…' : '⚡ Lanzar todas'}
-        </button>
+          {/* Botón global */}
+          <button
+            onClick={activateAll}
+            disabled={globalBusy || allActive}
+            className={`shrink-0 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+              allActive
+                ? 'bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30 cursor-default'
+                : globalBusy
+                ? 'bg-[#0066FF]/40 text-white/50 cursor-not-allowed'
+                : 'bg-[#0066FF] hover:bg-[#0055DD] text-white active:scale-95 shadow-lg shadow-[#0066FF]/30'
+            }`}
+          >
+            {allActive ? '✓ Todas activas' : globalBusy ? 'Activando…' : '🚀 ACTIVAR TODAS LAS CAMPAÑAS'}
+          </button>
+        </div>
       </div>
 
-      {/* Error global */}
-      {error && (
-        <div className="bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-lg px-4 py-3 text-[#FF3B30] text-sm">
-          Error al lanzar: {error}
-        </div>
-      )}
+      {/* Alertas globales */}
+      <div className="max-w-5xl mx-auto px-6 pt-4 space-y-2">
+        {globalError && (
+          <div className="bg-[#FF3B30]/10 border border-[#FF3B30]/30 rounded-xl px-4 py-3 text-[#FF3B30] text-sm">
+            ⚠️ Error al activar: {globalError}
+          </div>
+        )}
+        {globalDone && (
+          <div className="bg-[#00FF88]/10 border border-[#00FF88]/30 rounded-xl px-4 py-3 text-[#00FF88] text-sm flex items-center gap-2">
+            ✅ <span>Campañas activadas. WhatsApp enviado a Antonio (+526675039081).</span>
+          </div>
+        )}
+      </div>
 
-      {/* WhatsApp enviado */}
-      {launched && (
-        <div className="bg-[#00FF88]/10 border border-[#00FF88]/30 rounded-lg px-4 py-3 text-[#00FF88] text-sm flex items-center gap-2">
-          <span>✅</span>
-          <span>WhatsApp enviado a Antonio (+526675039081) con el resumen completo.</span>
-        </div>
-      )}
-
-      {/* ── Stats rápidas ─────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* ── Stats ────────────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-6 pt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Productos detectados', value: '5', sub: 'por TrendRadar' },
-          { label: 'Score promedio',       value: '82', sub: 'ProductScore /100' },
-          { label: 'Presupuesto total',    value: '$8,400', sub: 'MXN preparado' },
-          { label: 'Plataformas',          value: '3', sub: 'Meta · TikTok · Google' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-white/5 rounded-xl p-4 border border-white/10">
-            <p className="text-2xl font-bold text-[#0066FF]">{stat.value}</p>
-            <p className="text-xs font-medium text-white/80 mt-0.5">{stat.label}</p>
-            <p className="text-xs text-white/30 mt-0.5">{stat.sub}</p>
+          { label: 'Campañas',       value: '5',     color: 'text-[#0066FF]' },
+          { label: 'Score promedio', value: '82',    color: 'text-[#00FF88]' },
+          { label: 'Plataformas',    value: '3',     color: 'text-[#FFB800]' },
+          { label: 'Presupuesto',    value: '$8,400', color: 'text-white'    },
+        ].map((s) => (
+          <div key={s.label} className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-white/40 mt-0.5">{s.label}</p>
           </div>
         ))}
       </div>
 
-      {/* ── Cards de productos ────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        {AFFILIATE_SCORES.map((score) => {
-          const adPkg  = AFFILIATE_AD_COPY.find((a) => a.slug === score.slug)
-          const state  = states[score.slug]
-          const isOpen = expanded === score.slug
-          if (!adPkg) return null
-
+      {/* ── Cards de campañas ─────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-6 pt-6 pb-10 space-y-4">
+        {CAMPAIGNS.map((c) => {
+          const status = statuses[c.slug]
           return (
             <div
-              key={score.slug}
-              className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
+              key={c.slug}
+              className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col sm:flex-row"
             >
-              {/* Card header */}
-              <button
-                className="w-full flex items-center justify-between p-5 text-left hover:bg-white/5 transition-colors"
-                onClick={() => setExpanded(isOpen ? null : score.slug)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="text-3xl">
-                    {score.category === 'Hogar y Cocina'          ? '🥘'
-                     : score.category === 'Electrónicos'          ? '⌚'
-                     : score.category === 'Gaming y Tecnología'   ? '🎮'
-                     : score.category === 'Belleza y Cuidado'     ? '✨'
-                     : '🐾'}
-                  </div>
-                  <div>
-                    <h2 className="font-semibold text-white">{score.name}</h2>
-                    <p className="text-xs text-white/40 mt-0.5">{score.category}</p>
-                  </div>
+              {/* Imagen */}
+              <div className="sm:w-36 sm:h-auto h-32 shrink-0 relative overflow-hidden bg-white/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={c.image}
+                  alt={c.name}
+                  className="w-full h-full object-cover"
+                />
+                {/* Badge status sobre imagen */}
+                <div className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                  status === 'active'   ? 'bg-[#00FF88] text-[#0A1628]' :
+                  status === 'launching'? 'bg-[#FFB800] text-[#0A1628] animate-pulse' :
+                  status === 'error'    ? 'bg-[#FF3B30] text-white' :
+                                          'bg-white/20 text-white'
+                }`}>
+                  {status === 'active'    ? '● ACTIVA'    :
+                   status === 'launching' ? '● ACTIVANDO' :
+                   status === 'error'     ? '● ERROR'     :
+                                           '● PAUSADA'}
                 </div>
-
-                <div className="flex items-center gap-3">
-                  {/* Scores */}
-                  <div className="hidden sm:flex gap-2">
-                    <span className="text-xs bg-[#0066FF]/15 text-[#0066FF] px-2 py-0.5 rounded-full">
-                      Producto {score.product_score}
-                    </span>
-                    <span className="text-xs bg-[#00FF88]/10 text-[#00FF88] px-2 py-0.5 rounded-full">
-                      Afiliado {score.affiliate_score}
-                    </span>
-                  </div>
-                  <span className="text-white/30 text-sm">{isOpen ? '▲' : '▼'}</span>
-                </div>
-              </button>
-
-              {/* Platform status badges */}
-              <div className="px-5 pb-4 flex flex-wrap gap-2">
-                {(['meta', 'tiktok', 'google'] as const).map((plat) => (
-                  <button
-                    key={plat}
-                    onClick={() => state[plat] === 'idle' && handleLaunchOne(score.slug, plat)}
-                    disabled={state[plat] !== 'idle'}
-                    className={`text-xs px-3 py-1 rounded-full font-medium transition-all ${STATUS_STYLES[state[plat]]}`}
-                    title={state[plat] === 'idle' ? `Lanzar solo ${plat}` : undefined}
-                  >
-                    {PLATFORM_LABELS[plat]} — {STATUS_LABELS[state[plat]]}
-                  </button>
-                ))}
               </div>
 
-              {/* Expanded ad copy */}
-              {isOpen && (
-                <div className="px-5 pb-5 space-y-4 border-t border-white/10 pt-4">
-
-                  {/* Comparator URL */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-white/40">URL comparador:</span>
-                    <a
-                      href={adPkg.comparator_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-[#0066FF] hover:underline"
-                    >
-                      {adPkg.comparator_url}
-                    </a>
+              {/* Contenido */}
+              <div className="flex-1 p-5 flex flex-col sm:flex-row gap-4 justify-between">
+                {/* Info */}
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-semibold text-white">{c.emoji} {c.name}</h2>
+                    <span className="text-[10px] text-white/40 bg-white/5 px-2 py-0.5 rounded-full">{c.category}</span>
                   </div>
+                  <p className="text-sm text-[#0066FF] font-medium">{c.headline}</p>
+                  <p className="text-xs text-white/40">{c.audience}</p>
+                  <p className="text-xs text-white/30">Desde <span className="text-white/60 font-semibold">${c.minPrice} MXN</span></p>
 
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    {/* Meta copy */}
-                    <div className="bg-[#1877F2]/5 border border-[#1877F2]/20 rounded-xl p-4 space-y-2">
-                      <p className="text-xs font-semibold text-[#1877F2]">📘 Meta Ads</p>
-                      <p className="text-xs text-white/80 font-medium">{adPkg.copy.meta.headline}</p>
-                      <p className="text-xs text-white/50 leading-relaxed">{adPkg.copy.meta.primary_text}</p>
-                      <p className="text-xs text-white/30 italic">{adPkg.copy.meta.audience}</p>
-                    </div>
-
-                    {/* TikTok copy */}
-                    <div className="bg-[#FF004F]/5 border border-[#FF004F]/20 rounded-xl p-4 space-y-2">
-                      <p className="text-xs font-semibold text-[#FF004F]">🎵 TikTok</p>
-                      <p className="text-xs text-white/80 font-medium">{adPkg.copy.tiktok.hook}</p>
-                      <p className="text-xs text-white/50 leading-relaxed line-clamp-4">{adPkg.copy.tiktok.script}</p>
-                      <p className="text-xs text-white/30">{adPkg.copy.tiktok.caption}</p>
-                    </div>
-
-                    {/* Google copy */}
-                    <div className="bg-[#4285F4]/5 border border-[#4285F4]/20 rounded-xl p-4 space-y-2">
-                      <p className="text-xs font-semibold text-[#4285F4]">🛒 Google Shopping</p>
-                      <p className="text-xs text-white/80 font-medium">{adPkg.copy.google.headline1}</p>
-                      <p className="text-xs text-white/60">{adPkg.copy.google.headline2}</p>
-                      <p className="text-xs text-white/40">{adPkg.copy.google.headline3}</p>
-                      <p className="text-xs text-white/50 leading-relaxed">{adPkg.copy.google.description1}</p>
-                    </div>
+                  {/* Scores */}
+                  <div className="flex gap-2 pt-1">
+                    <span className="text-[10px] bg-[#0066FF]/15 text-[#0066FF] px-2 py-0.5 rounded-full">
+                      Producto {c.scoreP}/100
+                    </span>
+                    <span className="text-[10px] bg-[#00FF88]/10 text-[#00FF88] px-2 py-0.5 rounded-full">
+                      Afiliado {c.scoreA}/100
+                    </span>
                   </div>
                 </div>
-              )}
+
+                {/* Acciones */}
+                <div className="flex sm:flex-col gap-2 sm:items-end justify-start shrink-0">
+                  {/* Activar en Meta */}
+                  <button
+                    onClick={() => activateOne(c.slug)}
+                    disabled={status !== 'paused' && status !== 'error'}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                      status === 'active'
+                        ? 'bg-[#00FF88]/10 text-[#00FF88] border border-[#00FF88]/30 cursor-default'
+                        : status === 'launching'
+                        ? 'bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/30 cursor-not-allowed'
+                        : 'bg-[#1877F2]/20 hover:bg-[#1877F2]/30 text-[#1877F2] border border-[#1877F2]/30 active:scale-95'
+                    }`}
+                  >
+                    {status === 'active'    ? '✓ Meta activa'    :
+                     status === 'launching' ? '⏳ Activando…'    :
+                                             '📘 ACTIVAR EN META'}
+                  </button>
+
+                  {/* Ver página */}
+                  <a
+                    href={c.comparator}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg text-sm font-medium text-white/50 hover:text-white border border-white/10 hover:border-white/20 transition-all whitespace-nowrap text-center"
+                  >
+                    Ver página →
+                  </a>
+                </div>
+              </div>
             </div>
           )
         })}
       </div>
 
-      {/* ── Instrucciones manuales ─────────────────────────────────────────── */}
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
-        <h3 className="font-semibold text-white/80 text-sm">📋 Próximos pasos manuales</h3>
-        <div className="grid sm:grid-cols-3 gap-3 text-xs text-white/50">
+      {/* ── Instrucciones ─────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-6 pb-10">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5 grid sm:grid-cols-3 gap-5 text-xs text-white/50">
           <div className="space-y-1.5">
-            <p className="text-[#1877F2] font-medium">📘 Meta Ads</p>
-            <p>1. Ir a business.facebook.com</p>
-            <p>2. Conectar META_ADS_ACCESS_TOKEN</p>
-            <p>3. Las campañas se activarán automáticamente</p>
+            <p className="text-[#1877F2] font-semibold">📘 Meta Ads</p>
+            <p>Conecta META_ADS_ACCESS_TOKEN en Vercel para activar campañas reales.</p>
+            <p>Sin token → modo mock (sin costo).</p>
           </div>
           <div className="space-y-1.5">
-            <p className="text-[#FF004F] font-medium">🎵 TikTok Ads</p>
-            <p>1. Descargar <code className="bg-white/10 px-1 rounded">docs/tiktok-campaigns-ready.json</code></p>
-            <p>2. Ir a ads.tiktok.com</p>
-            <p>3. Crear campaña por producto con el JSON</p>
+            <p className="text-[#FF004F] font-semibold">🎵 TikTok Ads</p>
+            <p>Descarga <code className="bg-white/10 px-1 rounded">docs/tiktok-campaigns-ready.json</code></p>
+            <p>Sube manualmente en ads.tiktok.com</p>
           </div>
           <div className="space-y-1.5">
-            <p className="text-[#4285F4] font-medium">🛒 Google Shopping</p>
-            <p>1. Descargar <code className="bg-white/10 px-1 rounded">docs/google-merchant-feed.xml</code></p>
-            <p>2. Subir en merchants.google.com</p>
-            <p>3. Configurar campaña en Google Ads</p>
+            <p className="text-[#4285F4] font-semibold">🛒 Google Shopping</p>
+            <p>Descarga <code className="bg-white/10 px-1 rounded">docs/google-merchant-feed.xml</code></p>
+            <p>Sube en merchants.google.com</p>
           </div>
         </div>
       </div>
