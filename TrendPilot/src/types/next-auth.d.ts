@@ -7,12 +7,14 @@ declare module 'next-auth' {
     name?:     string | null
     role:      string
     vendorId?: string
+    region?:   string
   }
   interface Session {
     user: DefaultSession['user'] & {
       id:        string
       role:      string
       vendorId?: string
+      region?:   string
     }
   }
 }
@@ -22,5 +24,6 @@ declare module 'next-auth/jwt' {
     id:        string
     role:      string
     vendorId?: string
+    region?:   string
   }
 }

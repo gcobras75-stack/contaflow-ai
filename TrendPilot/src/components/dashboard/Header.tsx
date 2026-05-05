@@ -108,8 +108,14 @@ export function Header({ green, yellow, red, userName, userRole }: HeaderProps) 
             <span className="text-xs text-brand-text font-medium max-w-[100px] truncate hidden sm:block">
               {userName.split(' ')[0]}
             </span>
+            {userRole === 'superadmin' && (
+              <span className="text-[9px] font-bold text-brand-primary hidden sm:block">SUPER ADMIN</span>
+            )}
             {userRole === 'admin' && (
-              <span className="text-[9px] font-bold text-brand-primary hidden sm:block">ADMIN</span>
+              <span className="text-[9px] font-bold text-brand-green hidden sm:block">ADMIN</span>
+            )}
+            {userRole === 'supervisor' && (
+              <span className="text-[9px] font-bold text-brand-yellow hidden sm:block">SUPERVISORA</span>
             )}
             <ChevronDown size={11} className={cn('text-brand-muted transition-transform', menuOpen && 'rotate-180')} />
           </button>
@@ -123,9 +129,15 @@ export function Header({ green, yellow, red, userName, userRole }: HeaderProps) 
                   <p className="text-sm text-brand-text font-semibold truncate mt-0.5">{userName}</p>
                   <span className={cn(
                     'text-[10px] font-bold',
-                    userRole === 'admin' ? 'text-brand-primary' : 'text-brand-muted',
+                    userRole === 'superadmin' ? 'text-brand-primary' :
+                    userRole === 'admin'      ? 'text-brand-green' :
+                    userRole === 'supervisor' ? 'text-brand-yellow' :
+                    'text-brand-muted'
                   )}>
-                    {userRole === 'admin' ? 'Administrador' : 'Vendedor'}
+                    {userRole === 'superadmin' ? 'Super Administrador' :
+                     userRole === 'admin'      ? 'Administrador' :
+                     userRole === 'supervisor' ? 'Supervisora' :
+                     'Vendedor'}
                   </span>
                 </div>
                 <form action={logoutAction}>

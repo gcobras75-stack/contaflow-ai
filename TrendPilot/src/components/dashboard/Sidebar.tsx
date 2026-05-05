@@ -58,19 +58,36 @@ const moduleGroups = [
   {
     label: 'Sistema',
     modules: [
-      { id: 20, name: 'Franquicia',   label: 'Franquicia',    href: '/dashboard/franquicia',   icon: Building2, adminOnly: true },
-      { id: 16, name: 'Tests',        label: 'Pruebas E2E',   href: '/dashboard/test',         icon: TestTube2 },
-      { id: 17, name: 'Checklist',    label: 'Launch Check',  href: '/dashboard/launch-checklist', icon: Rocket },
+      { id: 20, name: 'Franquicia',   label: 'Franquicia',    href: '/dashboard/franquicia',       icon: Building2, superadminOnly: true },
+      { id: 16, name: 'Tests',        label: 'Pruebas E2E',   href: '/dashboard/test',             icon: TestTube2, adminOnly: true },
+      { id: 17, name: 'Checklist',    label: 'Launch Check',  href: '/dashboard/launch-checklist', icon: Rocket,   adminOnly: true },
     ],
   },
 ]
 
 interface SidebarProps {
-  role: string
+  role:     string
   userName: string
+  region?:  string
 }
 
-export function Sidebar({ role, userName }: SidebarProps) {
+const ROLE_LABEL: Record<string, string> = {
+  superadmin: 'Super Admin',
+  admin:      'Administrador',
+  supervisor: 'Supervisora',
+  vendor:     'Vendedor',
+  operator:   'Operador',
+}
+
+const ROLE_COLOR: Record<string, string> = {
+  superadmin: 'text-brand-primary',
+  admin:      'text-brand-green',
+  supervisor: 'text-brand-yellow',
+  vendor:     'text-brand-muted',
+  operator:   'text-brand-muted',
+}
+
+export function Sidebar({ role, userName, region }: SidebarProps) {
   const pathname  = usePathname()
   const { collapsed, toggle } = useSidebar()
 
@@ -79,6 +96,13 @@ export function Sidebar({ role, userName }: SidebarProps) {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
+
+  // Helper de visibilidad por rol
+  const canSee = (mod: { superadminOnly?: boolean; adminOnly?: boolean; [k: string]: unknown }): boolean => {
+    if (mod.superadminOnly) return role === 'superadmin'
+    if (mod.adminOnly)      return role === 'admin' || role === 'superadmin'
+    return true
+  }
 
   return (
     <aside
@@ -133,7 +157,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
               </p>
             )}
             <div className="space-y-0.5">
-              {group.modules.filter((mod) => !mod.adminOnly || role === 'admin').map((mod) => {
+              {group.modules.filter((mod) => canSee(mod)).map((mod) => {
                 const Icon = mod.icon
                 const isActive = pathname.startsWith(mod.href)
                 return (
@@ -169,20 +193,22 @@ export function Sidebar({ role, userName }: SidebarProps) {
       {/* Separador */}
       <div className="border-t border-brand-border mx-2" />
 
-      {/* Settings */}
-      <div className="px-2 py-2 shrink-0">
-        <Link
-          href="/dashboard/settings"
-          title={collapsed ? 'Configuración' : undefined}
-          className={cn(
-            'flex items-center rounded-xl text-sm text-brand-muted hover:text-brand-text hover:bg-brand-hover transition-all duration-150',
-            collapsed ? 'justify-center w-10 h-10 mx-auto' : 'gap-3 px-3 py-2',
-          )}
-        >
-          <Settings size={14} className="shrink-0" />
-          {!collapsed && <span>Configuración</span>}
-        </Link>
-      </div>
+      {/* Settings — solo admin y superadmin */}
+      {(role === 'admin' || role === 'superadmin') && (
+        <div className="px-2 py-2 shrink-0">
+          <Link
+            href="/dashboard/settings"
+            title={collapsed ? 'Configuración' : undefined}
+            className={cn(
+              'flex items-center rounded-xl text-sm text-brand-muted hover:text-brand-text hover:bg-brand-hover transition-all duration-150',
+              collapsed ? 'justify-center w-10 h-10 mx-auto' : 'gap-3 px-3 py-2',
+            )}
+          >
+            <Settings size={14} className="shrink-0" />
+            {!collapsed && <span>Configuración</span>}
+          </Link>
+        </div>
+      )}
 
       {/* Usuario */}
       {!collapsed && (
@@ -193,11 +219,9 @@ export function Sidebar({ role, userName }: SidebarProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold text-brand-text truncate">{userName}</p>
-              <p className={cn(
-                'text-[10px] font-medium',
-                role === 'admin' ? 'text-brand-primary' : 'text-brand-muted',
-              )}>
-                {role === 'admin' ? 'Administrador' : 'Vendedor'}
+              <p className={cn('text-[10px] font-medium', ROLE_COLOR[role] ?? 'text-brand-muted')}>
+                {ROLE_LABEL[role] ?? role}
+                {region && region !== 'all' && ` · ${region.charAt(0).toUpperCase() + region.slice(1)}`}
               </p>
             </div>
           </div>

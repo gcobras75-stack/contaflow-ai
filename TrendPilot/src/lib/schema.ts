@@ -12,7 +12,7 @@ export const campaignStatusEnum  = pgEnum('campaign_status',  ['green', 'yellow'
 export const commissionStatusEnum = pgEnum('commission_status', ['pending', 'paid'])
 export const trendSourceEnum     = pgEnum('trend_source',     ['google', 'mercadolibre', 'tiktok'])
 export const platformEnum        = pgEnum('platform',         ['meta', 'tiktok', 'both'])
-export const roleEnum            = pgEnum('user_role',        ['admin', 'vendor', 'operator'])
+export const roleEnum            = pgEnum('user_role',        ['superadmin', 'admin', 'supervisor', 'vendor', 'operator'])
 export const planEnum            = pgEnum('plan_type',        ['despegue', 'piloto', 'comandante', 'flota', 'comision'])
 export const creativeTypeEnum    = pgEnum('creative_type',    ['image', 'video', 'carousel'])
 export const influencerStatusEnum = pgEnum('influencer_status', ['contacted', 'active', 'rejected'])
@@ -30,6 +30,7 @@ export const profiles = pgTable('profiles', {
   name:          text('name').notNull(),
   role:          roleEnum('role').notNull().default('vendor'),
   vendor_id:     uuid('vendor_id'),                      // null para admins
+  region:        text('region'),                         // sinaloa | occidente | sureste | etc. (null = todas)
   created_at:    timestamp('created_at').notNull().defaultNow(),
 }, (t) => [
   index('profiles_email_idx').on(t.email),

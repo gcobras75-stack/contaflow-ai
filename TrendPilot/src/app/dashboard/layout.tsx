@@ -20,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <SidebarProvider>
       <div className="min-h-screen bg-brand-bg">
         <MobileRedirect />
-        <Sidebar role={user.role ?? 'vendor'} userName={userName} />
+        <Sidebar role={user.role ?? 'vendor'} userName={userName} region={user.region ?? undefined} />
         <Header
           green={semaphore.green}
           yellow={semaphore.yellow}

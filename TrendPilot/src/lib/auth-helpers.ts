@@ -7,14 +7,26 @@ export async function getCurrentUser() {
   return session?.user ?? null
 }
 
-// Verifica si el usuario tiene rol admin
-export function isAdmin(role?: string): boolean {
-  return role === 'admin'
+// Helpers de rol
+export function isSuperAdmin(role?: string): boolean {
+  return role === 'superadmin'
 }
 
-// Verifica si el usuario tiene rol vendor
+export function isAdmin(role?: string): boolean {
+  return role === 'admin' || role === 'superadmin'
+}
+
+export function isSupervisor(role?: string): boolean {
+  return role === 'supervisor'
+}
+
 export function isVendor(role?: string): boolean {
   return role === 'vendor'
+}
+
+// Verifica si el usuario puede hacer cambios (no es solo lectura)
+export function canWrite(role?: string): boolean {
+  return role === 'admin' || role === 'superadmin'
 }
 
 // Protege una ruta — redirige a /login si no hay sesión
@@ -24,10 +36,18 @@ export async function requireAuth() {
   return session.user
 }
 
-// Protege una ruta — redirige a /dashboard si el usuario no es admin
+// Protege una ruta — redirige a /dashboard si el usuario no es admin o superadmin
 export async function requireAdmin() {
   const session = await auth()
   if (!session?.user) redirect('/login')
-  if (session.user.role !== 'admin') redirect('/dashboard')
+  if (!isAdmin(session.user.role)) redirect('/dashboard')
+  return session.user
+}
+
+// Protege una ruta — solo superadmin
+export async function requireSuperAdmin() {
+  const session = await auth()
+  if (!session?.user) redirect('/login')
+  if (!isSuperAdmin(session.user.role)) redirect('/dashboard')
   return session.user
 }

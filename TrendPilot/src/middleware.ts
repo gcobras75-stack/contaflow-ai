@@ -4,6 +4,12 @@ import { NextResponse } from 'next/server'
 // Rutas accesibles sin sesión activa
 const PUBLIC_PATHS = ['/login', '/register', '/api/webhook-mp', '/api/auth']
 
+// Solo superadmin puede acceder a estas rutas
+const SUPERADMIN_PATHS = ['/dashboard/franquicia']
+
+// Admin o superadmin — supervisor y vendor no pueden entrar
+const ADMIN_PATHS = ['/dashboard/settings', '/dashboard/test', '/dashboard/launch-checklist']
+
 export default auth((req) => {
   const { pathname } = req.nextUrl
 
@@ -31,6 +37,22 @@ export default auth((req) => {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  const role = req.auth.user?.role ?? 'vendor'
+
+  // Rutas exclusivas de superadmin
+  if (SUPERADMIN_PATHS.some((p) => pathname.startsWith(p))) {
+    if (role !== 'superadmin') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
+  // Rutas de admin o superadmin (supervisor y vendor bloqueados)
+  if (ADMIN_PATHS.some((p) => pathname.startsWith(p))) {
+    if (role !== 'admin' && role !== 'superadmin') {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
   }
 
   return NextResponse.next()
