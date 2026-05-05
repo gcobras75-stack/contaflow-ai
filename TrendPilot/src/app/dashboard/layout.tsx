@@ -4,6 +4,7 @@ import { Header } from '@/components/dashboard/Header'
 import { MobileRedirect } from '@/components/dashboard/MobileRedirect'
 import { SidebarProvider } from '@/components/dashboard/SidebarContext'
 import { MainContent } from '@/components/dashboard/MainContent'
+import { PilotAI } from '@/components/dashboard/PilotAI'
 import { auth } from '@/lib/auth'
 import { getSemaphoreCount } from '@/lib/queries/campaigns'
 
@@ -29,6 +30,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           userId={user.id}
         />
         <MainContent>{children}</MainContent>
+        <PilotAI />
       </div>
     </SidebarProvider>
   )
