@@ -6,11 +6,18 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from './ratelimit'
 type RateLimitKey = keyof typeof RATE_LIMITS
 
 // Verifica autenticación en cada API route usando la sesión NextAuth (cookie JWT)
+// También acepta x-worker-secret para llamadas internas del worker Railway
 export async function verifyAuth(_request: Request): Promise<{
   userId:   string
   role:     string
   vendorId?: string
 } | null> {
+  // Worker secret — acceso interno desde Railway worker
+  const workerSecret = (_request as { headers: { get(name: string): string | null } }).headers.get('x-worker-secret')
+  if (workerSecret && workerSecret === process.env.WORKER_SECRET) {
+    return { userId: 'worker', role: 'admin' }
+  }
+
   try {
     const session = await auth()
     if (!session?.user?.id) return null

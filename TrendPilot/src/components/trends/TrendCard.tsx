@@ -38,18 +38,23 @@ const badgeConfig = {
   },
 }
 
-function formatPrice(price: number): string {
-  if (price === 0) return '—'
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(price)
+function formatPrice(price: number | undefined | null): string {
+  const v = Number(price ?? 0)
+  if (!v) return '—'
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v)
 }
 
-function formatResults(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return n.toString()
+function formatResults(n: number | undefined | null): string {
+  const v = Number(n ?? 0)
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
+  return v.toString()
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
+function timeAgo(iso: string | undefined | null): string {
+  if (!iso) return '—'
+  const ts = new Date(iso).getTime()
+  if (isNaN(ts)) return '—'
+  const diff = Date.now() - ts
   const mins = Math.floor(diff / 60_000)
   if (mins < 60) return `hace ${mins}m`
   const hrs = Math.floor(mins / 60)

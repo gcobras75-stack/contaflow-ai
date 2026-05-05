@@ -26,7 +26,9 @@ interface AdCreativeResult {
   headlines: string[]; descriptions: string[]; cta_options: string[]; audience: AudienceSuggestion
 }
 
-async function generateAdCreatives(productName: string, productPrice: number, category: string, platform: string): Promise<AdCreativeResult> {
+async function generateAdCreatives(
+  productName: string, productPrice: number, category: string, platform: string,
+): Promise<AdCreativeResult> {
   const prompt = `Eres un experto en publicidad digital para e-commerce en México.
 Genera creativos para un anuncio en ${platform === 'both' ? 'Meta y TikTok' : platform.toUpperCase()}.
 Producto: ${productName}
@@ -39,6 +41,40 @@ Responde ÚNICAMENTE con este JSON exacto (sin markdown, sin texto adicional):
   const raw     = await askClaude([{ role: 'user', content: prompt }], { maxTokens: 800, systemPrompt: 'Responde SOLO con JSON válido. Sin texto adicional.' })
   const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
   return JSON.parse(cleaned) as AdCreativeResult
+}
+
+// ─── Generar imagen con DALL-E 3 o URL placeholder ───────────────────────────
+
+async function generateImageUrl(productName: string, category: string): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) return null
+
+  try {
+    const prompt = `Professional product photo of ${productName}, clean white background, high quality, commercial photography style, suitable for Facebook and Instagram ads, Mexican market`
+
+    const res = await fetch('https://api.openai.com/v1/images/generations', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model:   'dall-e-3',
+        prompt,
+        n:       1,
+        size:    '1024x1024',
+        quality: 'standard',
+      }),
+      signal: AbortSignal.timeout(30_000),
+    })
+
+    if (!res.ok) return null
+
+    const json = await res.json()
+    return json.data?.[0]?.url ?? null
+  } catch {
+    return null
+  }
 }
 
 // POST /api/ad-creatives
@@ -69,6 +105,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Intentar generar imagen con DALL-E 3
+    const imageUrl = await generateImageUrl(product_name, category ?? 'general')
+
     const [data] = await db.insert(adCreatives).values({
       campaign_id,
       type:             'image',
@@ -80,12 +119,12 @@ export async function POST(request: NextRequest) {
       all_headlines:     creatives.headlines,
       all_descriptions:  creatives.descriptions,
       cta_options:       creatives.cta_options,
-      image_url:         null,  // DALL-E 3 se conecta en sesión 5
+      image_url:         imageUrl,
       performance_score: 0,
       is_winner:         false,
     }).returning()
 
-    return NextResponse.json({ data, creatives }, { status: 201 })
+    return NextResponse.json({ data, creatives, image_url: imageUrl }, { status: 201 })
   } catch (err) {
     logServerError(err, 'POST /api/ad-creatives')
     return serverErrorResponse()

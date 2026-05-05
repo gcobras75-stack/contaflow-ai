@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/ratelimit'
-import { rateLimitResponse, serverErrorResponse } from '@/lib/api-auth'
+import { guardRoute, rateLimitResponse, serverErrorResponse } from '@/lib/api-auth'
 import { logServerError } from '@/lib/logger'
 import { getTrends, saveTrends } from '@/lib/queries/trends'
 
@@ -11,6 +11,21 @@ interface TrendRecord {
   keyword: string; source: 'google' | 'mercadolibre' | 'tiktok'
   trend_score: number; is_early_signal: boolean
   historical_data?: Record<string, unknown>
+}
+
+// Normaliza registros de DB/live al shape que espera TrendCard en el cliente
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapTrend(t: any) {
+  const score = Number(t.trend_score ?? 0)
+  const badge = score >= 75 ? 'EXPLOSIVO' : score >= 50 ? 'EN ALERTA' : 'ESTABLE'
+  const hist  = (t.historical_data ?? {}) as Record<string, unknown>
+  return {
+    ...t,
+    badge,
+    total_results: Number(hist.total_results ?? t.total_results ?? 0),
+    avg_price:     Number(hist.avg_price     ?? t.avg_price     ?? 0),
+    detected_at:   t.detected_at ?? new Date().toISOString(),
+  }
 }
 
 function calculateScore(totalResults: number, avgPrice: number): number {
@@ -46,7 +61,7 @@ export async function GET(request: NextRequest) {
     const fresh = cached.filter((t) => new Date(t.detected_at).getTime() > freshCutoff)
 
     if (fresh.length >= 5) {
-      return NextResponse.json({ data: fresh, source: 'cache' })
+      return NextResponse.json({ data: fresh.map(mapTrend), source: 'cache' })
     }
 
     // 2. Obtener tendencias de MercadoLibre
@@ -58,8 +73,8 @@ export async function GET(request: NextRequest) {
       keywords = data.slice(0, 10).map((t) => t.keyword)
     } catch (mlErr) {
       logServerError(mlErr, 'GET /api/trends — fetch ML trends')
-      if (cached.length > 0) return NextResponse.json({ data: cached, source: 'stale_cache' })
-      return NextResponse.json({ data: getMockTrends(), source: 'mock' })
+      if (cached.length > 0) return NextResponse.json({ data: cached.map(mapTrend), source: 'stale_cache' })
+      return NextResponse.json({ data: getMockTrends().map(mapTrend), source: 'mock' })
     }
 
     // 3. Métricas por keyword
@@ -81,17 +96,45 @@ export async function GET(request: NextRequest) {
     )
 
     if (toSave.length === 0) {
-      if (cached.length > 0) return NextResponse.json({ data: cached, source: 'stale_cache' })
-      return NextResponse.json({ data: getMockTrends(), source: 'mock' })
+      if (cached.length > 0) return NextResponse.json({ data: cached.map(mapTrend), source: 'stale_cache' })
+      return NextResponse.json({ data: getMockTrends().map(mapTrend), source: 'mock' })
     }
 
     // 4. Persistir en Neon
     await saveTrends(toSave).catch((err) => logServerError(err, 'GET /api/trends — save'))
 
     toSave.sort((a, b) => b.trend_score - a.trend_score)
-    return NextResponse.json({ data: toSave, source: 'live' })
+    return NextResponse.json({ data: toSave.map(mapTrend), source: 'live' })
   } catch (err) {
     logServerError(err, 'GET /api/trends')
+    return serverErrorResponse()
+  }
+}
+
+// POST /api/trends — solo worker Railway (x-worker-secret)
+export async function POST(request: NextRequest) {
+  const guard = await guardRoute(request, 'trends')
+  if (guard instanceof NextResponse) return guard
+
+  try {
+    const body = await request.json()
+    const { keyword, trend_score, source, category, is_early_signal } = body
+
+    if (!keyword || !source) {
+      return NextResponse.json({ error: 'keyword y source son requeridos' }, { status: 400 })
+    }
+
+    await saveTrends([{
+      keyword:         String(keyword),
+      source:          source as 'google' | 'mercadolibre' | 'tiktok',
+      trend_score:     Number(trend_score) || 50,
+      is_early_signal: Boolean(is_early_signal),
+      historical_data: category ? { category } : undefined,
+    }])
+
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    logServerError(err, 'POST /api/trends')
     return serverErrorResponse()
   }
 }
