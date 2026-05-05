@@ -10,12 +10,19 @@ export async function POST(req: NextRequest) {
     const body = params.get('Body') || ''
     const from = params.get('From') || ''
 
-    const adminPhone = process.env.ADMIN_WHATSAPP || '+526675039081'
-    const adminWA = `whatsapp:${adminPhone}`
+    const fromNormalized = from
+      .replace('whatsapp:', '')
+      .replace('+', '')
+      .trim()
+
+    const adminNumbers = [
+      '526675039081',
+      '6675039081',
+    ]
 
     let respuesta = ''
 
-    if (from !== adminWA) {
+    if (!adminNumbers.some(n => fromNormalized.includes(n) || n.includes(fromNormalized))) {
       respuesta = 'Acceso no autorizado.'
     } else {
       const cmd = body.toLowerCase().trim()
