@@ -9,13 +9,14 @@ import { askClaude } from '@/lib/claude'
 import { logServerError } from '@/lib/logger'
 import { db } from '@/lib/db'
 import { adCreatives } from '@/lib/schema'
+import { generateProductImage } from '@/lib/image-providers/nano-banana'
 
 const AdBuilderSchema = z.object({
   campaign_id:   z.string().uuid(),
   product_name:  z.string().min(2).max(200),
   product_price: z.number().positive(),
   category:      z.string().max(100).optional(),
-  platform:      z.enum(['meta', 'tiktok', 'both']),
+  platform:      z.enum(['meta', 'tiktok', 'both', 'google']),
 })
 
 interface AudienceSuggestion {
@@ -43,33 +44,29 @@ Responde ÚNICAMENTE con este JSON exacto (sin markdown, sin texto adicional):
   return JSON.parse(cleaned) as AdCreativeResult
 }
 
-// ─── Generar imagen con DALL-E 3 o URL placeholder ───────────────────────────
+// ─── Generar imagen: Nano Banana (Gemini) → DALL-E 3 → placeholder ───────────
+// Prioridad: GOOGLE_API_KEY → Nano Banana, OPENAI_API_KEY → DALL-E 3, ninguno → null
 
-async function generateImageUrl(productName: string, category: string): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) return null
+async function generateImageUrl(productName: string, _category: string): Promise<string | null> {
+  // 1. Nano Banana (Gemini) si hay GOOGLE_API_KEY
+  if (process.env.GOOGLE_API_KEY) {
+    const result = await generateProductImage({ product_name: productName, style: 'product_only' })
+    if (!result.is_mock) return result.url
+  }
+
+  // 2. DALL-E 3 si hay OPENAI_API_KEY
+  const openaiKey = process.env.OPENAI_API_KEY
+  if (!openaiKey) return null
 
   try {
     const prompt = `Professional product photo of ${productName}, clean white background, high quality, commercial photography style, suitable for Facebook and Instagram ads, Mexican market`
-
     const res = await fetch('https://api.openai.com/v1/images/generations', {
       method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model:   'dall-e-3',
-        prompt,
-        n:       1,
-        size:    '1024x1024',
-        quality: 'standard',
-      }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+      body: JSON.stringify({ model: 'dall-e-3', prompt, n: 1, size: '1024x1024', quality: 'standard' }),
       signal: AbortSignal.timeout(30_000),
     })
-
     if (!res.ok) return null
-
     const json = await res.json()
     return json.data?.[0]?.url ?? null
   } catch {

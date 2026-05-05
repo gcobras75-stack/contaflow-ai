@@ -34,6 +34,31 @@ const MOCK_CAMPAIGNS: CampaignCardData[] = [
     semaphore_color: 'green',  budget_total: 350000,  budget_spent: 140000,  sales_generated: 1050000,
     commissions_earned: 210000, product_image: null, created_at: new Date().toISOString(),
   },
+  // GOOGLE SHOPPING — con métricas reales
+  {
+    id: 'cg1', product_name: 'Audífonos Bluetooth Pro',  vendor_name: 'TechStore MX', platform: 'google',
+    semaphore_color: 'green',  budget_total: 500000,  budget_spent: 48500,   sales_generated: 164600,
+    commissions_earned: 32920, product_image: null, created_at: new Date().toISOString(),
+  },
+  {
+    id: 'cg2', product_name: 'Suplementos colágeno',     vendor_name: 'VidaSana',     platform: 'google',
+    semaphore_color: 'green',  budget_total: 350000,  budget_spent: 33200,   sales_generated: 99600,
+    commissions_earned: 19920, product_image: null, created_at: new Date().toISOString(),
+  },
+  {
+    id: 'cg3', product_name: 'Leggings deportivos mujer', vendor_name: 'FitStyle MX',  platform: 'google',
+    semaphore_color: 'red',    budget_total: 250000,  budget_spent: 12400,   sales_generated: 18000,
+    commissions_earned: 3600,
+    pause_reason: 'ROAS 1.45x — por debajo del objetivo (3x)',
+    ai_suggestions: {
+      suggestions: [
+        'Optimizar títulos de producto para búsquedas "leggings deportivos mujer México"',
+        'Aumentar precio de puja para competir mejor en subastas de Shopping',
+        'Agregar imágenes adicionales del producto en Google Merchant Center',
+      ],
+    },
+    product_image: null, created_at: new Date().toISOString(),
+  },
   // AMARILLO — ROI 80-150%
   {
     id: 'c6', product_name: 'Cargador solar portátil',     vendor_name: 'GadgetsMX',    platform: 'tiktok',

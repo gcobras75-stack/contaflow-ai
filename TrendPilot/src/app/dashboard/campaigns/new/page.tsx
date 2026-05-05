@@ -25,7 +25,8 @@ interface AdCreativePreview {
 const PLATFORMS = [
   { value: 'meta',   label: 'Meta (Facebook + Instagram)', icon: '📘' },
   { value: 'tiktok', label: 'TikTok Ads',                  icon: '🎵' },
-  { value: 'both',   label: 'Ambas plataformas',           icon: '🚀' },
+  { value: 'both',   label: 'Meta + TikTok',               icon: '🚀' },
+  { value: 'google', label: 'Google Shopping',             icon: '🛒' },
 ]
 
 export default function NewCampaignPage() {
@@ -40,7 +41,7 @@ export default function NewCampaignPage() {
   const [productPrice, setProductPrice] = useState(0)
   const [productCat, setProductCat] = useState('')
   const [vendorId, setVendorId]     = useState('')
-  const [platform, setPlatform]     = useState<'meta' | 'tiktok' | 'both'>('meta')
+  const [platform, setPlatform]     = useState<'meta' | 'tiktok' | 'both' | 'google'>('meta')
   const [dailyBudget, setDailyBudget] = useState('')
   const [durationDays, setDurationDays] = useState('15')
 
@@ -225,7 +226,7 @@ export default function NewCampaignPage() {
           {/* Plataforma */}
           <div>
             <label className="text-xs text-brand-muted mb-2 block">Plataforma *</label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {PLATFORMS.map((p) => (
                 <label
                   key={p.value}

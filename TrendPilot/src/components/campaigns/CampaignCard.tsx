@@ -72,6 +72,7 @@ const platformBadge: Record<string, { label: string; cls: string }> = {
   meta:   { label: 'Meta',          cls: 'bg-[#1877F2]/15 text-[#1877F2]' },
   tiktok: { label: 'TikTok',        cls: 'bg-[#FF0050]/15 text-[#FF0050]' },
   both:   { label: 'Meta + TikTok', cls: 'bg-brand-purple/15 text-brand-purple' },
+  google: { label: 'Google',        cls: 'bg-[#4285F4]/15 text-[#4285F4]' },
 }
 
 function fmt(n: number) {
