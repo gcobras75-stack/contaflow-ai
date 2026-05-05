@@ -33,7 +33,7 @@ const SEED_USERS: SeedUser[] = [
     name:     'Andrea Gutierrez',
     email:    'andrea@trendpilot.marketing',
     password: 'AndreaTP2026*',
-    role:     'supervisor',
+    role:     'admin',
     region:   'sureste',
   },
 ]
