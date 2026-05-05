@@ -5,15 +5,6 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { createVendorByAdmin } from '@/app/actions/auth'
 
-const PLANS = [
-  { value: 'despegue',   label: 'Despegue — Gratis' },
-  { value: 'piloto',     label: 'Piloto — $999 MXN/mes' },
-  { value: 'comandante', label: 'Comandante — $2,499 MXN/mes' },
-  { value: 'flota',      label: 'Flota — Personalizado' },
-] as const
-
-type Plan = typeof PLANS[number]['value']
-
 export default function NewVendorPage() {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -26,12 +17,13 @@ export default function NewVendorPage() {
     setSuccess(null)
 
     const formData = new FormData(e.currentTarget)
+    const commissionRaw = Number(formData.get('commission_rate') ?? 25)
     const data = {
       name:            String(formData.get('name') ?? ''),
       email:           String(formData.get('email') ?? ''),
       whatsapp_number: String(formData.get('whatsapp_number') ?? ''),
       product_type:    String(formData.get('product_type') ?? ''),
-      plan:            String(formData.get('plan') ?? 'despegue') as Plan,
+      commission_rate: isNaN(commissionRaw) ? 25 : commissionRaw,
     }
 
     startTransition(async () => {
@@ -135,20 +127,16 @@ export default function NewVendorPage() {
             />
           </div>
 
-          {/* Plan */}
+          {/* Comisión */}
           <div>
-            <label className="text-xs text-brand-muted mb-1.5 block" htmlFor="plan">
-              Plan
+            <label className="text-xs text-brand-muted mb-1.5 block" htmlFor="commission_rate">
+              Comisión (%) <span className="text-brand-faint">— default 25%</span>
             </label>
-            <select
-              id="plan" name="plan"
-              defaultValue="despegue"
+            <input
+              id="commission_rate" name="commission_rate" type="number"
+              min={10} max={50} defaultValue={25}
               className="w-full bg-brand-border border border-brand-border rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors"
-            >
-              {PLANS.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
-              ))}
-            </select>
+            />
           </div>
 
           {/* Botones */}

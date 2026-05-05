@@ -33,7 +33,6 @@ const RegisterSchema = z.object({
   password:     z.string().min(6),
   whatsapp:     z.string().regex(/^\+?[0-9]{10,15}$/, 'WhatsApp inválido'),
   product_type: z.string().min(2).max(100).trim(),
-  plan:         z.enum(['despegue', 'piloto', 'comandante', 'flota']),
 })
 
 const AdminVendorSchema = z.object({
@@ -41,7 +40,7 @@ const AdminVendorSchema = z.object({
   email:           z.string().email().toLowerCase().trim(),
   whatsapp_number: z.string().regex(/^\+?[0-9]{10,15}$/, 'WhatsApp inválido'),
   product_type:    z.string().min(2).max(100).trim(),
-  plan:            z.enum(['despegue', 'piloto', 'comandante', 'flota']),
+  commission_rate: z.number().int().min(10).max(50).default(25),
 })
 
 // ─── Email HTML ─────────────────────────────────────────────────────────────
@@ -69,22 +68,26 @@ function buildWelcomeEmail(name: string, email: string): string {
           <tr>
             <td style="padding:40px 32px;">
               <h2 style="margin:0 0 16px;color:#ffffff;font-size:22px;font-weight:600;">¡Bienvenido, ${name}! 🚀</h2>
+              <p style="margin:0 0 16px;color:#94a3b8;font-size:15px;line-height:1.6;">
+                Tu cuenta TrendPilot está activa y es <strong style="color:#00FF88;">completamente gratis</strong>.
+              </p>
               <p style="margin:0 0 24px;color:#94a3b8;font-size:15px;line-height:1.6;">
-                Tu cuenta en TrendPilot ha sido creada exitosamente.
+                Solo compartimos el <strong style="color:#ffffff;">25% cuando vendemos tus productos</strong>.<br/>
+                Si no hay ventas → no pagas nada. 🤝
               </p>
               <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
                 <tr>
                   <td style="background-color:#0066FF;border-radius:8px;padding:14px 28px;">
-                    <a href="https://trendpilot.marketing/login" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">Acceder ahora →</a>
+                    <a href="https://trendpilot.marketing/dashboard" style="color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;">Subir mi primer producto →</a>
                   </td>
                 </tr>
               </table>
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0A1628;border-radius:8px;padding:20px;border:1px solid #1e3a5f;">
                 <tr>
                   <td>
-                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Tus datos de acceso</p>
+                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;text-transform:uppercase;letter-spacing:1px;">Tu acceso</p>
                     <p style="margin:0 0 4px;color:#ffffff;font-size:14px;"><strong style="color:#00FF88;">Correo:</strong> ${email}</p>
-                    <p style="margin:0;color:#94a3b8;font-size:13px;">Usa la contraseña que registraste al crear tu cuenta.</p>
+                    <p style="margin:0;color:#94a3b8;font-size:13px;">Usa la contraseña que creaste al registrarte.</p>
                   </td>
                 </tr>
               </table>
@@ -95,7 +98,7 @@ function buildWelcomeEmail(name: string, email: string): string {
               <p style="margin:0 0 8px;color:#94a3b8;font-size:13px;">
                 ¿Tienes dudas? <a href="mailto:soporte@trendpilot.marketing" style="color:#0066FF;text-decoration:none;">soporte@trendpilot.marketing</a>
               </p>
-              <p style="margin:0;color:#4a6080;font-size:12px;">© 2025 TrendPilot. Todos los derechos reservados.</p>
+              <p style="margin:0;color:#4a6080;font-size:12px;">© 2026 TrendPilot. Todos los derechos reservados.</p>
             </td>
           </tr>
         </table>
@@ -156,7 +159,6 @@ export async function registerAction(
     password:     formData.get('password'),
     whatsapp:     formData.get('whatsapp'),
     product_type: formData.get('product_type'),
-    plan:         formData.get('plan'),
   }
 
   const parsed = RegisterSchema.safeParse(raw)
@@ -164,7 +166,7 @@ export async function registerAction(
     return { error: parsed.error.issues[0].message }
   }
 
-  const { name, email, password, whatsapp, product_type, plan } = parsed.data
+  const { name, email, password, whatsapp, product_type } = parsed.data
 
   // Verificar si el correo ya existe
   const existing = await db.select({ id: profiles.id }).from(profiles).where(eq(profiles.email, email)).limit(1)
@@ -176,14 +178,15 @@ export async function registerAction(
     // Hashear contraseña con bcrypt (12 rounds)
     const password_hash = await bcrypt.hash(password, 12)
 
-    // Crear registro de vendor
+    // Crear registro de vendor — modelo 100% comisión, gratis
     const [vendor] = await db.insert(vendors).values({
       name,
       email,
       whatsapp_number: whatsapp,
       product_type,
-      plan,
-      status: 'active',
+      plan:            'comision',
+      commission_rate: 25,
+      status:          'active',
     }).returning()
 
     // Crear perfil de usuario con referencia al vendor
@@ -203,7 +206,7 @@ export async function registerAction(
   sendEmail({
     from:    'TrendPilot <hola@trendpilot.marketing>',
     to:      email,
-    subject: 'Bienvenido a TrendPilot 🚀',
+    subject: '¡Bienvenido a TrendPilot! Tu cuenta está activa 🚀',
     html:    buildWelcomeEmail(name, email),
   }).catch((err) => logServerError(err, 'registerAction/sendEmail'))
 
@@ -217,14 +220,14 @@ export async function createVendorByAdmin(data: {
   email:           string
   whatsapp_number: string
   product_type:    string
-  plan:            'despegue' | 'piloto' | 'comandante' | 'flota'
+  commission_rate?: number
 }): Promise<{ success: true; vendorId: string } | { error: string }> {
   const parsed = AdminVendorSchema.safeParse(data)
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message }
   }
 
-  const { name, email, whatsapp_number, product_type, plan } = parsed.data
+  const { name, email, whatsapp_number, product_type, commission_rate } = parsed.data
 
   // Contraseña temporal de 8 caracteres
   const tempPassword = Math.random().toString(36).slice(-4) +
@@ -234,7 +237,8 @@ export async function createVendorByAdmin(data: {
     const password_hash = await bcrypt.hash(tempPassword, 12)
 
     const [vendor] = await db.insert(vendors).values({
-      name, email, whatsapp_number, product_type, plan, status: 'active',
+      name, email, whatsapp_number, product_type,
+      plan: 'comision', commission_rate, status: 'active',
     }).returning()
 
     await db.insert(profiles).values({
@@ -252,7 +256,7 @@ export async function createVendorByAdmin(data: {
     sendEmail({
       from:    'TrendPilot <hola@trendpilot.marketing>',
       to:      email,
-      subject: 'Bienvenido a TrendPilot 🚀',
+      subject: '¡Bienvenido a TrendPilot! Tu cuenta está activa 🚀',
       html:    buildWelcomeEmail(name, email),
     }).catch((err) => logServerError(err, 'createVendorByAdmin/sendEmail'))
 

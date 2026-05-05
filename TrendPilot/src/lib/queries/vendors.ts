@@ -17,15 +17,20 @@ export async function getVendorById(id: string) {
 }
 
 export async function createVendor(data: {
-  name:            string
-  email:           string
-  phone?:          string
+  name:             string
+  email:            string
+  phone?:           string
   whatsapp_number?: string
-  product_type?:   string
-  plan:            'despegue' | 'piloto' | 'comandante' | 'flota'
-  status?:         'pending' | 'active' | 'suspended'
+  product_type?:    string
+  commission_rate?: number
+  status?:          'pending' | 'active' | 'suspended'
 }) {
-  const rows = await db.insert(vendors).values({ ...data, status: data.status ?? 'active' }).returning()
+  const rows = await db.insert(vendors).values({
+    ...data,
+    plan:            'comision',
+    commission_rate: data.commission_rate ?? 25,
+    status:          data.status ?? 'active',
+  }).returning()
   return rows[0]
 }
 

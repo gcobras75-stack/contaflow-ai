@@ -51,7 +51,8 @@ MODELO DE NEGOCIO:
 - Comisión: 25% de cada venta generada
 - GrowthFund: 40% de comisiones se reinvierte
 - Split: vendedor 75% / TrendPilot 25%
-- Planes: Despegue (gratis) / Piloto $999 MXN / Comandante $2,499 MXN
+- Registro 100% gratis — sin tarjeta de crédito, productos ilimitados
+- Solo 25% de comisión cuando hay una venta real. Si no vendemos → no pagas nada.
 
 FRANQUICIA FAMILIAR:
 - Antonio = superadmin, ve todo

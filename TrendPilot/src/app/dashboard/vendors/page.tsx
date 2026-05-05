@@ -12,25 +12,11 @@ interface Vendor {
   email:            string
   phone:            string | null
   whatsapp_number:  string | null
-  plan:             string
+  commission_rate:  number
   status:           string
   trust_score:      number
   product_count:    number
   created_at:       string
-}
-
-const planLabel: Record<string, string> = {
-  despegue:   'Despegue',
-  piloto:     'Piloto',
-  comandante: 'Comandante',
-  flota:      'Flota',
-}
-
-const planBadge: Record<string, string> = {
-  despegue:   'bg-brand-hover text-brand-muted',
-  piloto:     'bg-brand-primary/15 text-brand-primary',
-  comandante: 'bg-brand-purple/15 text-brand-purple',
-  flota:      'bg-brand-green/15 text-brand-green',
 }
 
 const statusConfig: Record<string, { label: string; dot: string; text: string }> = {
@@ -160,7 +146,7 @@ export default function VendorsPage() {
         <div className="grid grid-cols-[auto_1fr_120px_100px_90px_70px_40px] gap-4 px-5 py-3 border-b border-brand-border">
           <span className="w-8" />
           <span className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest">Vendedor</span>
-          <span className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest">Plan</span>
+          <span className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest">Comisión</span>
           <span className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest">Estado</span>
           <span className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest">TrustScore</span>
           <span className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest">Prods.</span>
@@ -191,7 +177,6 @@ export default function VendorsPage() {
         ) : (
           vendors.map((vendor, idx) => {
             const sc = statusConfig[vendor.status] ?? { label: vendor.status, dot: 'bg-brand-faint', text: 'text-brand-muted' }
-            const pb = planBadge[vendor.plan] ?? 'bg-brand-hover text-brand-muted'
             return (
               <div
                 key={vendor.id}
@@ -208,8 +193,8 @@ export default function VendorsPage() {
                   <p className="text-xs text-brand-faint truncate mt-0.5">{vendor.email}</p>
                 </div>
 
-                <span className={cn('text-[10px] font-bold px-2 py-1 rounded-full w-fit', pb)}>
-                  {planLabel[vendor.plan] ?? vendor.plan}
+                <span className="text-[10px] font-bold px-2 py-1 rounded-full w-fit bg-brand-green/15 text-brand-green">
+                  {vendor.commission_rate ?? 25}%
                 </span>
 
                 <div className="flex items-center gap-1.5">

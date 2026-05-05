@@ -6,12 +6,11 @@ export const VendorCreateSchema = z.object({
   email:            z.string().email().toLowerCase().trim(),
   phone:            z.string().regex(/^\+?[0-9]{10,15}$/, 'Teléfono inválido').optional(),
   whatsapp_number:  z.string().regex(/^\+?[0-9]{10,15}$/, 'WhatsApp inválido').optional(),
-  plan:             z.enum(['despegue','piloto','comandante','flota']).default('despegue'),
+  commission_rate:  z.number().int().min(10).max(50).default(25),
 })
 
 export const VendorUpdateSchema = VendorCreateSchema.partial().omit({
   email: true,   // el email no se puede cambiar
-  plan: true,    // el plan no lo cambia el vendedor directamente
 }).extend({
   // Solo admin puede cambiar el estado de un vendor
   status: z.enum(['active', 'suspended', 'pending']).optional(),

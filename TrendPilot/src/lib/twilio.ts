@@ -61,7 +61,7 @@ export async function sendWhatsApp(message: WhatsAppMessage): Promise<string | n
 export async function sendVendorWelcome(phone: string, vendorName: string): Promise<string | null> {
   return sendWhatsApp({
     to:   phone,
-    body: `Hola ${vendorName} 👋 Bienvenido a *TrendPilot*!\nTu cuenta está lista en trendpilot.marketing\nSomos tu piloto de ventas inteligente 🚀\n¿Tienes dudas? Responde aquí.`,
+    body: `Hola ${vendorName} 👋\nTu cuenta *TrendPilot* está activa.\n\nEs completamente *gratis*.\nSolo compartimos el 25% cuando vendemos tus productos.\nSi no vendemos → no pagas nada. 🤝\n\nSube tu primer producto en:\ntrendpilot.marketing/dashboard\n\n¿Tienes dudas? Responde aquí.`,
   })
 }
 

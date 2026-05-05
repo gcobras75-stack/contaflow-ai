@@ -261,23 +261,33 @@ const STEPS = [
     desc: 'Solo pagas cuando hay ventas. Sin costos fijos, sin riesgos, sin complicaciones' },
 ]
 
-const PLAN_FREE = {
-  name: 'DESPEGUE', price: 'Gratis', sub: 'para siempre', popular: false,
-  features: ['1 producto activo', 'Análisis de tendencias', 'ProductScore básico', 'Sin tarjeta de crédito'],
-  cta: 'Empezar gratis', href: '/register',
-}
+const COMMISSION_FEATURES = [
+  'Registro 100% gratis',
+  'Sin mensualidades ni costos fijos',
+  'Sin tarjeta de crédito requerida',
+  'Anuncios en Meta y TikTok',
+  'IA crea tus anuncios automáticamente',
+  'Campañas optimizadas 24/7',
+  'Productos ilimitados',
+]
 
-const PLAN_PILOT = {
-  name: 'PILOTO', price: '$999', sub: 'MXN / mes', popular: true,
-  features: ['3 productos activos', 'Campañas automáticas Meta', 'AdBuilder con IA', 'WhatsApp automático', 'Monitor semáforo 24/7'],
-  cta: 'Empezar ahora', href: '/register',
-}
-
-const PLAN_CMD = {
-  name: 'COMANDANTE', price: '$2,499', sub: 'MXN / mes', popular: false,
-  features: ['Productos ilimitados', 'Meta + TikTok Ads', 'A/B Testing automático', 'Retargeting automático', 'InfluMatch incluido', 'MarketSpy competencia', 'Soporte prioritario'],
-  cta: 'Contactar', href: 'mailto:contacto@automatia.mx',
-}
+const WHY_NOW = [
+  {
+    emoji: '🚀',
+    title: 'Cero riesgo',
+    desc: 'No pagas nada por adelantado. Si no vendemos, no nos debes nada.',
+  },
+  {
+    emoji: '🤖',
+    title: 'Marketing automático gratis',
+    desc: 'Nuestra IA crea y publica tus anuncios en Meta y TikTok sin que toques nada.',
+  },
+  {
+    emoji: '💰',
+    title: 'Solo resultados',
+    desc: 'Compartimos el 25% solo cuando hay una venta real. Nuestro éxito depende del tuyo.',
+  },
+]
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
@@ -386,52 +396,68 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ── PLANES ────────────────────────────────────────────────────── */}
-        <section id="planes" style={s({ padding: '100px 24px', maxWidth: 1100, margin: '0 auto' })}>
-          <div style={{ textAlign: 'center', marginBottom: 60 }}>
-            <p style={{ color: '#0066FF', fontSize: 13, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 12 }}>Precios</p>
-            <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 800, letterSpacing: '-1.5px' }}>Empieza gratis hoy</h2>
+        {/* ── MODELO DE COMISIÓN ────────────────────────────────────────── */}
+        <section id="planes" style={s({ padding: '100px 24px', maxWidth: 800, margin: '0 auto' })}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <p style={{ color: '#0066FF', fontSize: 13, fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 12 }}>Modelo</p>
+            <h2 style={{ fontSize: 'clamp(28px, 4vw, 48px)', fontWeight: 800, letterSpacing: '-1.5px' }}>Solo payas cuando vendemos</h2>
             <p style={{ color: 'rgba(248,250,252,0.45)', marginTop: 12, fontSize: 16 }}>Sin compromisos. Sin tarjeta. Sin cargos ocultos.</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, alignItems: 'start' }}>
-            {[PLAN_FREE, PLAN_PILOT, PLAN_CMD].map((plan) => (
-              <div key={plan.name} style={{
-                background: plan.popular ? 'linear-gradient(145deg, rgba(0,102,255,0.15), rgba(124,58,237,0.1))' : '#111827',
-                border: plan.popular ? '2px solid #0066FF' : '1px solid #1E293B',
-                borderRadius: 20, padding: 32, position: 'relative',
-                transform: plan.popular ? 'scale(1.03)' : 'none',
-              }}>
-                {plan.popular && (
-                  <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#0066FF,#7C3AED)', borderRadius: 100, padding: '4px 16px', fontSize: 11, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
-                    MÁS POPULAR
-                  </div>
-                )}
+          {/* Card única del modelo */}
+          <div style={{ background: 'linear-gradient(145deg, rgba(0,102,255,0.15), rgba(124,58,237,0.08))', border: '2px solid #0066FF', borderRadius: 24, padding: '48px 40px', position: 'relative', overflow: 'hidden', textAlign: 'center' }}>
+            {/* Glow */}
+            <div style={{ position: 'absolute', top: -60, left: '50%', transform: 'translateX(-50%)', width: 400, height: 200, background: 'radial-gradient(circle, rgba(0,102,255,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-                <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '2px', color: plan.popular ? '#60A5FA' : 'rgba(248,250,252,0.35)', marginBottom: 12 }}>{plan.name}</p>
-                <div style={{ marginBottom: 24 }}>
-                  <span style={{ fontSize: 42, fontWeight: 900, color: plan.popular ? '#F8FAFC' : '#F8FAFC' }}>{plan.price}</span>
-                  <span style={{ fontSize: 14, color: 'rgba(248,250,252,0.4)', marginLeft: 6 }}>{plan.sub}</span>
-                </div>
+            <div style={{ position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#0066FF,#7C3AED)', borderRadius: '0 0 16px 16px', padding: '6px 24px', fontSize: 11, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap' }}>
+              MODELO TRENDPILOT
+            </div>
 
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {plan.features.map((f) => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: 'rgba(248,250,252,0.7)' }}>
-                      <Check size={15} color="#00FF88" style={{ marginTop: 1, flexShrink: 0 }} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
+            <p style={{ fontSize: 18, color: 'rgba(248,250,252,0.6)', marginBottom: 16, marginTop: 8 }}>Solo pagas cuando vendemos</p>
 
-                <Link href={plan.href} style={{
-                  display: 'block', textAlign: 'center', padding: '12px 0',
-                  borderRadius: 12, fontWeight: 700, fontSize: 14, textDecoration: 'none',
-                  background: plan.popular ? 'linear-gradient(135deg,#0066FF,#7C3AED)' : 'transparent',
-                  border: plan.popular ? 'none' : '1px solid rgba(255,255,255,0.15)',
-                  color: '#F8FAFC',
-                }}>
-                  {plan.cta}
-                </Link>
+            {/* Precio destacado */}
+            <div style={{ marginBottom: 36 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 72, fontWeight: 900, color: '#00FF88', lineHeight: 1 }}>25%</span>
+                <span style={{ fontSize: 18, color: 'rgba(248,250,252,0.5)' }}>por venta</span>
+              </div>
+              <p style={{ fontSize: 15, color: 'rgba(248,250,252,0.45)' }}>Si no hay ventas → no pagas nada</p>
+            </div>
+
+            {/* Features */}
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 auto 36px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 380, textAlign: 'left' }}>
+              {COMMISSION_FEATURES.map((f) => (
+                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 15, color: 'rgba(248,250,252,0.8)' }}>
+                  <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'rgba(0,255,136,0.15)', border: '1px solid rgba(0,255,136,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Check size={11} color="#00FF88" />
+                  </span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <Link href="/register" style={{ display: 'inline-block', padding: '16px 40px', borderRadius: 14, background: 'linear-gradient(135deg,#0066FF,#7C3AED)', color: '#fff', fontWeight: 700, fontSize: 16, textDecoration: 'none', boxShadow: '0 8px 32px rgba(0,102,255,0.4)' }}>
+              Registrarme gratis ahora →
+            </Link>
+          </div>
+
+          {/* Garantía */}
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 14, color: 'rgba(248,250,252,0.35)', fontStyle: 'italic' }}>
+            Sin letra chica. Sin sorpresas. Solo resultados.
+          </p>
+        </section>
+
+        {/* ── ¿POR QUÉ REGISTRARTE HOY? ────────────────────────────────── */}
+        <section style={s({ padding: '80px 24px', maxWidth: 1100, margin: '0 auto' })}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 800 }}>¿Por qué registrarte hoy?</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24 }}>
+            {WHY_NOW.map(({ emoji, title, desc }) => (
+              <div key={title} style={{ background: '#111827', border: '1px solid #1E293B', borderRadius: 20, padding: 36, textAlign: 'center' }}>
+                <div style={{ fontSize: 52, marginBottom: 20 }}>{emoji}</div>
+                <h3 style={{ fontSize: 20, fontWeight: 800, marginBottom: 12, color: '#F8FAFC' }}>{title}</h3>
+                <p style={{ fontSize: 15, color: 'rgba(248,250,252,0.55)', lineHeight: 1.7 }}>{desc}</p>
               </div>
             ))}
           </div>

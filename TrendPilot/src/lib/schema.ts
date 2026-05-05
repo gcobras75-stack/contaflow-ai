@@ -13,7 +13,7 @@ export const commissionStatusEnum = pgEnum('commission_status', ['pending', 'pai
 export const trendSourceEnum     = pgEnum('trend_source',     ['google', 'mercadolibre', 'tiktok'])
 export const platformEnum        = pgEnum('platform',         ['meta', 'tiktok', 'both'])
 export const roleEnum            = pgEnum('user_role',        ['admin', 'vendor', 'operator'])
-export const planEnum            = pgEnum('plan_type',        ['despegue', 'piloto', 'comandante', 'flota'])
+export const planEnum            = pgEnum('plan_type',        ['despegue', 'piloto', 'comandante', 'flota', 'comision'])
 export const creativeTypeEnum    = pgEnum('creative_type',    ['image', 'video', 'carousel'])
 export const influencerStatusEnum = pgEnum('influencer_status', ['contacted', 'active', 'rejected'])
 export const leadSourceEnum      = pgEnum('lead_source',      ['ml', 'maps', 'manual'])
@@ -49,7 +49,8 @@ export const vendors = pgTable('vendors', {
   growth_fund_balance:   integer('growth_fund_balance').notNull().default(0),  // centavos
   total_sales:           integer('total_sales').notNull().default(0),           // centavos
   total_commissions_paid: integer('total_commissions_paid').notNull().default(0), // centavos
-  plan:                  planEnum('plan').notNull().default('despegue'),
+  plan:                  planEnum('plan').notNull().default('comision'),
+  commission_rate:       integer('commission_rate').notNull().default(25),  // % comisión por venta
   contract_status:       text('contract_status'),          // 'pending' | 'signed'
   contract_submission_id: text('contract_submission_id'),  // ID de DocuSeal
   created_at:            timestamp('created_at').notNull().defaultNow(),

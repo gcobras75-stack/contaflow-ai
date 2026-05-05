@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormState, useFormStatus } from 'react-dom'
-import { TrendingUp, AlertCircle } from 'lucide-react'
+import { TrendingUp, AlertCircle, Check } from 'lucide-react'
 import { registerAction } from '@/app/actions/auth'
 
 function SubmitButton() {
@@ -12,16 +12,16 @@ function SubmitButton() {
       disabled={pending}
       className="w-full bg-brand-primary hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition-colors text-sm mt-2"
     >
-      {pending ? 'Creando cuenta…' : 'Crear cuenta gratis'}
+      {pending ? 'Creando cuenta…' : 'Registrarme gratis ahora →'}
     </button>
   )
 }
 
-const PLANS = [
-  { value: 'despegue',   label: 'Despegue — Gratis',            desc: '1 producto, sin campañas' },
-  { value: 'piloto',     label: 'Piloto — $999 MXN/mes',        desc: '3 productos, campañas básicas' },
-  { value: 'comandante', label: 'Comandante — $2,499 MXN/mes',  desc: 'Productos ilimitados, IA completa' },
-  { value: 'flota',      label: 'Flota — Precio personalizado', desc: 'Para agencias y marcas grandes' },
+const BENEFITS = [
+  'Registro 100% gratis — sin tarjeta de crédito',
+  'Productos y campañas ilimitadas',
+  'Solo 25% de comisión cuando hay ventas',
+  'Si no vendemos → no pagas nada',
 ]
 
 export default function RegisterPage() {
@@ -41,10 +41,25 @@ export default function RegisterPage() {
           </div>
         </div>
 
+        {/* Propuesta de valor */}
+        <div className="mb-4 p-4 bg-brand-primary/10 border border-brand-primary/25 rounded-2xl">
+          <p className="text-sm font-semibold text-white mb-3 text-center">
+            Bienvenido al modelo TrendPilot 🚀
+          </p>
+          <div className="space-y-1.5">
+            {BENEFITS.map((b) => (
+              <div key={b} className="flex items-center gap-2">
+                <Check size={13} className="text-brand-green shrink-0" />
+                <span className="text-xs text-brand-text">{b}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="bg-brand-surface border border-brand-border rounded-2xl p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Crear cuenta</h2>
-            <p className="text-xs text-brand-muted mt-1">Empieza gratis, escala cuando estés listo.</p>
+            <h2 className="text-lg font-semibold text-white">Crear cuenta gratis</h2>
+            <p className="text-xs text-brand-muted mt-1">Sin tarjeta de crédito. Sin compromisos.</p>
           </div>
 
           {/* Error */}
@@ -133,31 +148,6 @@ export default function RegisterPage() {
               />
             </div>
 
-            {/* Plan */}
-            <div>
-              <label className="text-xs text-brand-muted mb-2 block">Plan</label>
-              <div className="space-y-2">
-                {PLANS.map((plan) => (
-                  <label
-                    key={plan.value}
-                    className="flex items-start gap-3 p-3 rounded-lg border border-brand-border hover:border-brand-primary cursor-pointer transition-colors has-[:checked]:border-brand-primary has-[:checked]:bg-brand-primary/5"
-                  >
-                    <input
-                      type="radio"
-                      name="plan"
-                      value={plan.value}
-                      defaultChecked={plan.value === 'despegue'}
-                      className="mt-0.5 accent-[#0066FF]"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-white">{plan.label}</p>
-                      <p className="text-xs text-brand-muted">{plan.desc}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            </div>
-
             <SubmitButton />
           </form>
 
@@ -168,6 +158,11 @@ export default function RegisterPage() {
             </a>
           </p>
         </div>
+
+        {/* Garantía */}
+        <p className="text-center text-xs text-brand-faint mt-4">
+          Sin letra chica. Sin sorpresas. Solo resultados.
+        </p>
       </div>
     </div>
   )

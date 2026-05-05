@@ -15,7 +15,7 @@ interface Vendor {
   email:           string
   phone:           string | null
   whatsapp_number: string | null
-  plan:            string
+  commission_rate: number
   status:          string
   trust_score:     number
   total_sales:     number
@@ -30,13 +30,6 @@ interface Product {
   score:       number
   category:    string | null
   created_at:  string
-}
-
-const planLabel: Record<string, string> = {
-  despegue:   'Despegue',
-  piloto:     'Piloto',
-  comandante: 'Comandante',
-  flota:      'Flota',
 }
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -165,8 +158,8 @@ export default function VendorDetailPage({ params }: { params: Promise<{ id: str
             <TrustScoreBadge score={vendor.trust_score ?? 0} size="lg" />
           </div>
           <div className="text-right">
-            <p className="text-xs text-brand-muted mb-1">Plan</p>
-            <span className="text-sm font-semibold text-white">{planLabel[vendor.plan] ?? vendor.plan}</span>
+            <p className="text-xs text-brand-muted mb-1">Comisión</p>
+            <span className="text-lg font-bold text-brand-green">{vendor.commission_rate ?? 25}%</span>
           </div>
         </div>
 
