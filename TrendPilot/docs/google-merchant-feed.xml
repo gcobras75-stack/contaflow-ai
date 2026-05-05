@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Google Merchant Center — Product Feed
+  Generado por TrendPilot Sesión 18 — Fase 8
+  Fecha: 2026-05-05
+  Subir en: https://merchants.google.com → Products → Feeds → Upload
+  Formato: XML / RSS 2.0 con namespace g:
+-->
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>TrendPilot — Comparador de Precios México</title>
+    <link>https://trendpilot.marketing</link>
+    <description>Las mejores comparaciones de precios para el mercado mexicano. Productos trending con precios reales actualizados diariamente.</description>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         1. FREIDORA DE AIRE — Cosori (mejor opción calidad/precio)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-AF-001</g:id>
+      <g:title>Freidora de Aire Cosori 3.8L — Compara 3 opciones en México</g:title>
+      <g:description>Compara las 3 freidoras de aire más vendidas en México. Cosori 3.8L desde $999 MXN, Ninja AF100 $1,399, Instant Vortex 4L $799. Envío gratis disponible. Precios actualizados diariamente.</g:description>
+      <g:link>https://trendpilot.marketing/p/airfryer-sin-aceite</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/00FF88?text=Freidora+de+Aire</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>799.00 MXN</g:price>
+      <g:sale_price>799.00 MXN</g:sale_price>
+      <g:brand>Cosori</g:brand>
+      <g:gtin></g:gtin>
+      <g:mpn>TP-AIRFRYER-001</g:mpn>
+      <g:google_product_category>722</g:google_product_category><!-- Home &amp; Garden &gt; Kitchen &amp; Dining &gt; Kitchen Appliances &gt; Air Fryers -->
+      <g:product_type>Hogar y Cocina &gt; Electrodomésticos &gt; Freidoras</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_91</g:custom_label_1>
+      <g:custom_label_2>affiliate_score_88</g:custom_label_2>
+      <g:custom_label_3>hogar_cocina</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         2. FREIDORA DE AIRE — Ninja (opción premium)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-AF-002</g:id>
+      <g:title>Freidora de Aire Ninja AF100 — Compara precios México</g:title>
+      <g:description>Ninja AF100 freidora de aire $1,399 MXN en México. Compara con Cosori y Instant Vortex. 4 funciones: freír, asar, hornear y deshidratar. Envío a todo México.</g:description>
+      <g:link>https://trendpilot.marketing/p/airfryer-sin-aceite</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/0066FF?text=Ninja+AF100</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>1399.00 MXN</g:price>
+      <g:brand>Ninja</g:brand>
+      <g:mpn>TP-AIRFRYER-002</g:mpn>
+      <g:google_product_category>722</g:google_product_category>
+      <g:product_type>Hogar y Cocina &gt; Electrodomésticos &gt; Freidoras</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_91</g:custom_label_1>
+      <g:custom_label_3>hogar_cocina</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         3. SMARTWATCH — Xiaomi Mi Band 8 (mejor precio)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-SW-001</g:id>
+      <g:title>Xiaomi Mi Band 8 Smartwatch — Compara 3 opciones México</g:title>
+      <g:description>Xiaomi Mi Band 8 desde $499 MXN en México. Compara con Amazfit GTR 4 y Garmin Forerunner 55. 16 días batería, monitor cardíaco, SpO2, resistencia 5ATM.</g:description>
+      <g:link>https://trendpilot.marketing/p/smartwatch-deportivo</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/00FF88?text=Xiaomi+Mi+Band+8</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>499.00 MXN</g:price>
+      <g:brand>Xiaomi</g:brand>
+      <g:mpn>TP-SMARTWATCH-001</g:mpn>
+      <g:google_product_category>543639</g:google_product_category><!-- Electronics &gt; Wearable Technology &gt; Smart Watches -->
+      <g:product_type>Electrónicos &gt; Wearables &gt; Smartwatches</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_87</g:custom_label_1>
+      <g:custom_label_2>affiliate_score_82</g:custom_label_2>
+      <g:custom_label_3>electronica</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         4. SMARTWATCH — Amazfit GTR 4 (mejor relación calidad/precio)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-SW-002</g:id>
+      <g:title>Amazfit GTR 4 Smartwatch GPS — Precio México hoy</g:title>
+      <g:description>Amazfit GTR 4 $1,299 MXN en México. GPS integrado, 150 modos deportivos, llamadas Bluetooth, 14 días batería. Amazon Prime — llega mañana. Compara en TrendPilot.</g:description>
+      <g:link>https://trendpilot.marketing/p/smartwatch-deportivo</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/0066FF?text=Amazfit+GTR+4</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>1299.00 MXN</g:price>
+      <g:sale_price>1299.00 MXN</g:sale_price>
+      <g:brand>Amazfit</g:brand>
+      <g:mpn>TP-SMARTWATCH-002</g:mpn>
+      <g:google_product_category>543639</g:google_product_category>
+      <g:product_type>Electrónicos &gt; Wearables &gt; Smartwatches</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_87</g:custom_label_1>
+      <g:custom_label_3>electronica</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         5. TECLADO MECÁNICO — Redragon K552 (mejor precio)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-TK-001</g:id>
+      <g:title>Teclado Mecánico Gamer Redragon K552 — Compara México</g:title>
+      <g:description>Redragon K552 teclado mecánico gamer desde $549 MXN. Compara con HyperX Origins Core y Corsair K70 Pro. Switches Cherry MX Blue, anti-ghosting, retroiluminación RGB.</g:description>
+      <g:link>https://trendpilot.marketing/p/teclado-mecanico-gamer</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/00FF88?text=Redragon+K552</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>549.00 MXN</g:price>
+      <g:brand>Redragon</g:brand>
+      <g:mpn>TP-TECLADO-001</g:mpn>
+      <g:google_product_category>499</g:google_product_category><!-- Electronics &gt; Computers &gt; Computer Accessories &gt; Keyboards -->
+      <g:product_type>Electrónicos &gt; Gaming &gt; Teclados Mecánicos</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_83</g:custom_label_1>
+      <g:custom_label_2>affiliate_score_79</g:custom_label_2>
+      <g:custom_label_3>gaming</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         6. SUERO VITAMINA C — The Ordinary (más potente)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-SK-001</g:id>
+      <g:title>Suero Vitamina C The Ordinary 23% — Compara México</g:title>
+      <g:description>The Ordinary Vitamina C 23% desde $279 MXN. Compara con Skin1004 Centella y CeraVe. Ingredientes verificados, opiniones reales. El más potente del mercado mexicano.</g:description>
+      <g:link>https://trendpilot.marketing/p/suero-vitamina-c</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/00FF88?text=Vitamina+C+Serum</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>279.00 MXN</g:price>
+      <g:brand>The Ordinary</g:brand>
+      <g:mpn>TP-SKINCARE-001</g:mpn>
+      <g:google_product_category>2548</g:google_product_category><!-- Health &amp; Beauty &gt; Personal Care &gt; Cosmetics &gt; Skin Care &gt; Serums -->
+      <g:product_type>Belleza &gt; Skincare &gt; Sueros Faciales</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_78</g:custom_label_1>
+      <g:custom_label_2>affiliate_score_74</g:custom_label_2>
+      <g:custom_label_3>belleza</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         7. GPS MASCOTAS — Tractive GPS 4G (mejor cobertura)
+    ═══════════════════════════════════════════════════════════════ -->
+    <item>
+      <g:id>TP-GP-001</g:id>
+      <g:title>GPS Mascotas Tractive 4G — Compara 3 opciones México</g:title>
+      <g:description>Tractive GPS 4G para mascotas desde $399 MXN en México. Compara con Cube Smart y Apple AirTag+Collar. Localiza a tu perro en tiempo real. Cobertura 4G nacional.</g:description>
+      <g:link>https://trendpilot.marketing/p/gps-mascotas</g:link>
+      <g:image_link>https://placehold.co/800x800/0A1628/00FF88?text=GPS+Mascotas</g:image_link>
+      <g:condition>new</g:condition>
+      <g:availability>in_stock</g:availability>
+      <g:price>399.00 MXN</g:price>
+      <g:brand>Cube Smart</g:brand>
+      <g:mpn>TP-GPS-MASCOTA-001</g:mpn>
+      <g:google_product_category>3237</g:google_product_category><!-- Animals &amp; Pet Supplies &gt; Pet Supplies &gt; Pet Collars &amp; Harnesses -->
+      <g:product_type>Mascotas &gt; Tecnología &gt; GPS Rastreadores</g:product_type>
+      <g:custom_label_0>trending</g:custom_label_0>
+      <g:custom_label_1>product_score_72</g:custom_label_1>
+      <g:custom_label_2>affiliate_score_68</g:custom_label_2>
+      <g:custom_label_3>mascotas</g:custom_label_3>
+      <g:shipping>
+        <g:country>MX</g:country>
+        <g:price>0.00 MXN</g:price>
+      </g:shipping>
+      <g:identifier_exists>false</g:identifier_exists>
+    </item>
+
+  </channel>
+</rss>

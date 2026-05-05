@@ -4,7 +4,7 @@
 const TWILIO_API_URL = 'https://api.twilio.com/2010-04-01'
 
 // Número de WhatsApp del admin Antonio
-const ADMIN_PHONE = process.env.ADMIN_WHATSAPP_NUMBER ?? '526675039081'
+const ADMIN_PHONE = process.env.ADMIN_WHATSAPP ?? process.env.ADMIN_WHATSAPP_NUMBER ?? '+526675039081'
 
 interface WhatsAppMessage {
   to:       string

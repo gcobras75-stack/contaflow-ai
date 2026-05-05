@@ -1,16 +1,57 @@
 # TrendPilot — Contexto completo del proyecto
 
 ## ¿Qué es TrendPilot?
-Plataforma SaaS de marketing automatizado con IA 
-para e-commerce en México. Detecta tendencias de 
-productos en tiempo real, encuentra vendedores 
-óptimos, lanza campañas publicitarias automáticas 
-en Meta y TikTok, y cobra comisiones por ventas 
-generadas. Dominio: trendpilot.marketing
+Plataforma de Super Afiliado automatizado con IA 
+para el mercado mexicano. Detecta tendencias en 
+tiempo real, crea páginas comparadoras con psicología 
+de confianza, lanza campañas en Meta/TikTok/Google 
+y cobra comisiones de las plataformas afiliadas.
+Dominio: trendpilot.marketing
 
 ## Propietarios
-- Antonio (PC) — arquitectura, finanzas, supervisión
+- Antonio Gutierrez — Superadmin — antonio@automatia.mx — WhatsApp +526675039081
 - José Antonio (tablet Android) — operación diaria
+
+## Modelo de negocio actualizado (Sesión 18)
+TrendPilot opera como Super Afiliado:
+- NO requiere aprobación de vendedores individuales
+- Acceso inmediato a millones de productos en ML, Temu, Shein, AliExpress, Hotmart, Coppel
+- Comisiones pagadas por las plataformas afiliadas (3-20% según plataforma)
+- Registro como afiliado UNA sola vez por plataforma
+- Flujo 100% automatizado: TrendRadar → Comparador → Imagen+Video → Anuncio → Comisión
+
+## Flujo completo sin vendedores
+TrendRadar detecta tendencia (ML + Google Trends + TikTok)
+→ Affiliate Comparator busca mejor precio en ML, Temu, Shein, AliExpress, Hotmart, Coppel
+→ Genera página /p/[slug] con psicología de confianza
+→ Nano Banana genera imagen del producto (Gemini)
+→ Luma AI genera video (cuando esté activo)
+→ Claude genera copy del anuncio (headline, descripción, audiencia)
+→ Publica anuncio en Meta Ads + TikTok Ads + Google Shopping
+→ Comprador llega → elige opción → compra
+→ Plataforma paga comisión a TrendPilot
+→ Notificación a Antonio: +526675039081
+
+## Contacto del administrador
+Antonio Gutierrez — Superadmin
+Email: antonio@automatia.mx
+WhatsApp: +526675039081 (ADMIN_WHATSAPP en todas las notificaciones)
+Todas las alertas del sistema van a este número vía Twilio
+
+## LeadFinder — Solo para casos premium
+El LeadFinder ya no es necesario para el negocio principal.
+Solo se usa cuando un vendedor quiere trabajar DIRECTAMENTE
+con TrendPilot fuera de las plataformas de afiliados,
+con comisión especial negociada (>25%).
+
+## Plataformas afiliadas soportadas
+- MercadoLibre MX — programa oficial ML Partners
+- Amazon MX — Amazon Associates
+- Temu — programa afiliado Temu
+- Shein — programa afiliado Shein
+- AliExpress — AliExpress Portals
+- Hotmart — para productos digitales
+- Coppel — para electrodomésticos y electrónica
 
 ## Stack tecnológico OBLIGATORIO
 - Frontend web: Next.js 14 + Tailwind CSS

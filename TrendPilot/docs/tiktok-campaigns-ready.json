@@ -1,0 +1,213 @@
+{
+  "_meta": {
+    "generated_at": "2026-05-05T00:00:00Z",
+    "generated_by": "TrendPilot Sesión 18 — Fase 7",
+    "platform": "TikTok Ads Manager",
+    "status": "READY_TO_UPLOAD",
+    "total_campaigns": 5,
+    "total_budget_mxn": 7500,
+    "notes": "Subir manualmente a TikTok Ads Manager en https://ads.tiktok.com — Crear una Campaña por producto. Tipo: Traffic → Landing Page. Objetivo: Conversions."
+  },
+  "campaigns": [
+    {
+      "campaign_id": "TP-TK-001",
+      "slug": "airfryer-sin-aceite",
+      "campaign_name": "TrendPilot — Freidora de Aire 🥘",
+      "objective": "TRAFFIC",
+      "budget_daily_mxn": 300,
+      "budget_total_mxn": 2100,
+      "schedule": {
+        "start_date": "2026-05-06",
+        "end_date": "2026-05-13",
+        "timezone": "America/Mexico_City"
+      },
+      "targeting": {
+        "countries": ["MX"],
+        "languages": ["es"],
+        "age_min": 25,
+        "age_max": 45,
+        "gender": "FEMALE",
+        "interests": ["Food & Beverage", "Cooking & Recipes", "Health & Wellness", "Home Appliances"],
+        "devices": ["MOBILE"],
+        "placement": ["TIKTOK", "PANGLE"]
+      },
+      "ad_group": {
+        "name": "Mujeres cocina saludable MX",
+        "bid_type": "OCPM",
+        "bid_amount_mxn": 18
+      },
+      "creative": {
+        "identity_type": "TIKTOK_ACCOUNT",
+        "hook": "¿Cuánto gastas en aceite cada semana? Esto te va a sorprender 👇",
+        "script": "¿Cuánto gastas en aceite cada semana? Esto te va a sorprender. Comparamos las 3 freidoras de aire más vendidas en México. La Cosori a $999 pesos, la Ninja a $1,399 y la Instant Vortex a $799. ¿Cuál conviene más? En TrendPilot comparamos precios todos los días para que no caigas en el más caro. Link en bio. 🔥",
+        "caption": "¿Cuánto gastas en aceite? Nosotros comparamos por ti 🫙 #freidoradeaire #airfryer #cocinafit #saludable #mexico #trendpilot #recetassaludables #cocinamexico",
+        "cta": "Shop Now",
+        "landing_page_url": "https://trendpilot.marketing/p/airfryer-sin-aceite",
+        "video_format": "9:16",
+        "video_duration_seconds": 30
+      }
+    },
+    {
+      "campaign_id": "TP-TK-002",
+      "slug": "smartwatch-deportivo",
+      "campaign_name": "TrendPilot — Smartwatch Deportivo ⌚",
+      "objective": "TRAFFIC",
+      "budget_daily_mxn": 250,
+      "budget_total_mxn": 1750,
+      "schedule": {
+        "start_date": "2026-05-06",
+        "end_date": "2026-05-13",
+        "timezone": "America/Mexico_City"
+      },
+      "targeting": {
+        "countries": ["MX"],
+        "languages": ["es"],
+        "age_min": 18,
+        "age_max": 40,
+        "gender": "ALL",
+        "interests": ["Fitness & Workout", "Running & Jogging", "Sports", "Consumer Electronics", "Wearable Technology"],
+        "devices": ["MOBILE"],
+        "placement": ["TIKTOK", "PANGLE"]
+      },
+      "ad_group": {
+        "name": "Fitness tech México",
+        "bid_type": "OCPM",
+        "bid_amount_mxn": 20
+      },
+      "creative": {
+        "identity_type": "TIKTOK_ACCOUNT",
+        "hook": "Comparé 3 smartwatches y el resultado me sorprendió 😱",
+        "script": "Comparé 3 smartwatches en México y el resultado me sorprendió. El Xiaomi Mi Band 8 a $499 lleva 16 días de batería y tiene GPS. El Amazfit GTR 4 a $1,299 tiene GPS propio y llega mañana por Amazon. Y el Garmin Forerunner 55 a $2,999 es el favorito de los corredores serios. ¿Cuál es para ti? Compara precios hoy en TrendPilot. ⌚",
+        "caption": "Smartwatch barato vs caro — comparamos por ti 📊 #smartwatch #xiaomi #amazfit #garmin #fitness #corredor #mexico #trendpilot #tecno",
+        "cta": "Learn More",
+        "landing_page_url": "https://trendpilot.marketing/p/smartwatch-deportivo",
+        "video_format": "9:16",
+        "video_duration_seconds": 30
+      }
+    },
+    {
+      "campaign_id": "TP-TK-003",
+      "slug": "teclado-mecanico-gamer",
+      "campaign_name": "TrendPilot — Teclado Mecánico Gamer 🎮",
+      "objective": "TRAFFIC",
+      "budget_daily_mxn": 200,
+      "budget_total_mxn": 1400,
+      "schedule": {
+        "start_date": "2026-05-06",
+        "end_date": "2026-05-13",
+        "timezone": "America/Mexico_City"
+      },
+      "targeting": {
+        "countries": ["MX"],
+        "languages": ["es"],
+        "age_min": 16,
+        "age_max": 35,
+        "gender": "MALE",
+        "interests": ["Video Games", "PC Gaming", "Esports", "Technology", "Gaming Accessories"],
+        "devices": ["MOBILE"],
+        "placement": ["TIKTOK", "PANGLE"]
+      },
+      "ad_group": {
+        "name": "Gamers México",
+        "bid_type": "OCPM",
+        "bid_amount_mxn": 15
+      },
+      "creative": {
+        "identity_type": "TIKTOK_ACCOUNT",
+        "hook": "ASMR teclado mecánico + el precio más bajo 🎮",
+        "script": "ASMR teclado mecánico y el precio que no esperabas ver en México. El Redragon K552 a $549 con switches Cherry MX Blue. El HyperX Origins Core a $1,299 con RGB completo. Y el Corsair K70 Pro a $2,499 para pros. ¿Cuál conviene más para gaming? Comparamos en TrendPilot para que no gastes de más. 🎮",
+        "caption": "Teclado mecánico gamer — ¿cuál conviene? 🎮 #teclado #mecanico #gaming #gamer #redragon #hyperx #corsair #pcgaming #esports #mexico #trendpilot",
+        "cta": "Shop Now",
+        "landing_page_url": "https://trendpilot.marketing/p/teclado-mecanico-gamer",
+        "video_format": "9:16",
+        "video_duration_seconds": 30
+      }
+    },
+    {
+      "campaign_id": "TP-TK-004",
+      "slug": "suero-vitamina-c",
+      "campaign_name": "TrendPilot — Suero Vitamina C ✨",
+      "objective": "TRAFFIC",
+      "budget_daily_mxn": 250,
+      "budget_total_mxn": 1750,
+      "schedule": {
+        "start_date": "2026-05-06",
+        "end_date": "2026-05-13",
+        "timezone": "America/Mexico_City"
+      },
+      "targeting": {
+        "countries": ["MX"],
+        "languages": ["es"],
+        "age_min": 22,
+        "age_max": 45,
+        "gender": "FEMALE",
+        "interests": ["Skincare & Beauty", "Health & Wellness", "Cosmetics", "Korean Beauty", "Dermatology"],
+        "devices": ["MOBILE"],
+        "placement": ["TIKTOK", "PANGLE"]
+      },
+      "ad_group": {
+        "name": "Skincare fans México",
+        "bid_type": "OCPM",
+        "bid_amount_mxn": 22
+      },
+      "creative": {
+        "identity_type": "TIKTOK_ACCOUNT",
+        "hook": "Dermatóloga revela cuál vitamina C SÍ funciona en México 💆‍♀️",
+        "script": "Dermatóloga revela cuál vitamina C sí funciona en México. The Ordinary 23% a $279 — la más potente pero irrita pieles sensibles. Skin1004 Centella a $349 — la favorita de los skincare fans. CeraVe a $459 — la más recomendada para pieles sensibles. Comparamos en TrendPilot para que tu piel no lo pague. 💆‍♀️",
+        "caption": "¿Cuál vitamina C es la mejor? La respuesta te va a sorprender ✨ #vitaminac #skincare #theordinary #cerave #skincaremexico #rutinacuidado #pielluminosa #trendpilot #cosmeticacoreana",
+        "cta": "Learn More",
+        "landing_page_url": "https://trendpilot.marketing/p/suero-vitamina-c",
+        "video_format": "9:16",
+        "video_duration_seconds": 30
+      }
+    },
+    {
+      "campaign_id": "TP-TK-005",
+      "slug": "gps-mascotas",
+      "campaign_name": "TrendPilot — GPS para Mascotas 🐾",
+      "objective": "TRAFFIC",
+      "budget_daily_mxn": 200,
+      "budget_total_mxn": 1400,
+      "schedule": {
+        "start_date": "2026-05-06",
+        "end_date": "2026-05-13",
+        "timezone": "America/Mexico_City"
+      },
+      "targeting": {
+        "countries": ["MX"],
+        "languages": ["es"],
+        "age_min": 25,
+        "age_max": 50,
+        "gender": "ALL",
+        "interests": ["Pets & Animals", "Dogs", "Cats", "Pet Care", "Smart Home Technology"],
+        "devices": ["MOBILE"],
+        "placement": ["TIKTOK", "PANGLE"]
+      },
+      "ad_group": {
+        "name": "Dueños mascotas México",
+        "bid_type": "OCPM",
+        "bid_amount_mxn": 16
+      },
+      "creative": {
+        "identity_type": "TIKTOK_ACCOUNT",
+        "hook": "Mi perro se escapó 3 veces — lo que aprendí 🐕",
+        "script": "Mi perro se escapó 3 veces antes de comprar un GPS. Y comparé los 3 que hay en México. El Cube Smart a $399 — el más económico con app básica. El Tractive GPS 4G a $599 con suscripción mensual pero cobertura real 4G. Y el Apple AirTag con collar a $649 — perfecto si ya tienes iPhone. ¿Cuál conviene? Compara en TrendPilot. 🐕",
+        "caption": "GPS para perros — lo que nadie te dice 🐾 #gpsperro #mascota #perro #seguridadmascota #tractive #airtag #applepets #mexico #trendpilot #perrosmx",
+        "cta": "Shop Now",
+        "landing_page_url": "https://trendpilot.marketing/p/gps-mascotas",
+        "video_format": "9:16",
+        "video_duration_seconds": 30
+      }
+    }
+  ],
+  "instructions": {
+    "step1": "Ir a https://ads.tiktok.com → Create Campaign → Traffic",
+    "step2": "Crear un Ad Group por campaña con los targeting specs del JSON",
+    "step3": "Subir video 9:16 de 30 segundos (grabar o usar Luma AI)",
+    "step4": "Pegar el script y caption de este JSON",
+    "step5": "Configurar landing page URL del campo 'landing_page_url'",
+    "step6": "Presupuesto diario según 'budget_daily_mxn' — en pesos MXN",
+    "step7": "Revisar y publicar — TikTok revisa en 24hrs",
+    "contact": "Antonio Gutierrez +526675039081 para aprobación final"
+  }
+}

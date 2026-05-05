@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server'
 const PUBLIC_PATHS = ['/login', '/register', '/api/webhook-mp', '/api/auth', '/p/']
 
 // Solo superadmin puede acceder a estas rutas
-const SUPERADMIN_PATHS = ['/dashboard/franquicia', '/dashboard/setup/google-ads']
+const SUPERADMIN_PATHS = ['/dashboard/franquicia', '/dashboard/setup/google-ads', '/dashboard/campaigns/first-run']
 
 // Admin o superadmin — supervisor y vendor no pueden entrar
 const ADMIN_PATHS = ['/dashboard/settings', '/dashboard/test', '/dashboard/launch-checklist']
