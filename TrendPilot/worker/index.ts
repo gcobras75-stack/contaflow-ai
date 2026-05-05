@@ -316,6 +316,18 @@ async function recalcTrustScores() {
   }
 }
 
+// ─── CRON 4b — Diario 8:05am: reporte diario WhatsApp a Antonio ──────────────
+
+async function dailyWhatsAppReport() {
+  log('INFO', 'Enviando reporte diario WhatsApp a Antonio…')
+  try {
+    await apiPost('/api/whatsapp/daily-report', {})
+    log('INFO', 'Reporte diario WhatsApp enviado OK')
+  } catch (err) {
+    log('ERROR', 'Error en dailyWhatsAppReport', err)
+  }
+}
+
 // ─── CRON 5 — Lunes 8am: reporte semanal WhatsApp admin ──────────────────────
 
 async function weeklyReport() {
@@ -792,11 +804,14 @@ cron.schedule('0 6 * * *', updateReachBackMetrics, { timezone: 'America/Mexico_C
 // Cada 2 horas — sincronizar métricas reales de Supermetrics
 cron.schedule('0 */2 * * *', syncSupermetrics, { timezone: 'America/Mexico_City' })
 
+// Cada día a las 8:05am — reporte diario WhatsApp a Antonio
+cron.schedule('5 8 * * *', dailyWhatsAppReport, { timezone: 'America/Mexico_City' })
+
 // ─── Arranque ─────────────────────────────────────────────────────────────────
 
 log('INFO', '🚀 TrendPilot Worker iniciado')
 log('INFO', `APP_URL: ${APP_URL}`)
-log('INFO', 'Crons: [6am] reachback | [7am] seasons | [7:30am] leadfinder | [1h] semáforo | [2h] supermetrics | [6h] tendencias | [8am] comisiones | [9am] trust | [10am] growthfund | [lun 8am] reporte WA')
+log('INFO', 'Crons: [6am] reachback | [7am] seasons | [7:30am] leadfinder | [1h] semáforo | [2h] supermetrics | [6h] tendencias | [8am] comisiones | [8:05am] WA report | [9am] trust | [10am] growthfund | [lun 8am] reporte WA')
 
 // Ejecutar inmediatamente al arrancar
 evaluateSemaphore().catch((err) => log('ERROR', 'Error en arranque evaluateSemaphore', err))
