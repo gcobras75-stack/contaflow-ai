@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/daily-vendor-hunt",
+      "schedule": "0 15 * * *"
+    }
+  ]
+}
