@@ -1,0 +1,52 @@
+{
+  "name": "TrendPilot — Marketing Automatizado con IA",
+  "short_name": "TrendPilot",
+  "description": "Detectamos tendencias, lanzamos campañas, tú cobras. El piloto inteligente de tus ventas en México.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0F1E",
+  "theme_color": "#0066FF",
+  "orientation": "portrait-primary",
+  "lang": "es-MX",
+  "categories": ["business", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Campañas",
+      "short_name": "Campañas",
+      "description": "Ver estado de campañas",
+      "url": "/dashboard/campaigns",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Tendencias",
+      "short_name": "Tendencias",
+      "description": "Ver TrendRadar",
+      "url": "/dashboard/trends",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "LeadFinder",
+      "short_name": "Leads",
+      "description": "Buscar nuevos vendors",
+      "url": "/dashboard/lead-finder",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    }
+  ],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

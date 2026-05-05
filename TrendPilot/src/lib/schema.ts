@@ -12,7 +12,7 @@ export const campaignStatusEnum  = pgEnum('campaign_status',  ['green', 'yellow'
 export const commissionStatusEnum = pgEnum('commission_status', ['pending', 'paid'])
 export const trendSourceEnum     = pgEnum('trend_source',     ['google', 'mercadolibre', 'tiktok'])
 export const platformEnum        = pgEnum('platform',         ['meta', 'tiktok', 'both'])
-export const roleEnum            = pgEnum('user_role',        ['admin', 'vendor'])
+export const roleEnum            = pgEnum('user_role',        ['admin', 'vendor', 'operator'])
 export const planEnum            = pgEnum('plan_type',        ['despegue', 'piloto', 'comandante', 'flota'])
 export const creativeTypeEnum    = pgEnum('creative_type',    ['image', 'video', 'carousel'])
 export const influencerStatusEnum = pgEnum('influencer_status', ['contacted', 'active', 'rejected'])
@@ -267,6 +267,24 @@ export const leads = pgTable('leads', {
   index('leads_status_idx').on(t.status),
   index('leads_score_idx').on(t.lead_score),
   index('leads_created_idx').on(t.created_at),
+])
+
+// ─── regions (franquicia familiar) ───────────────────────────────────────────
+
+export const regions = pgTable('regions', {
+  id:                  uuid('id').primaryKey().defaultRandom(),
+  name:                text('name').notNull(),
+  slug:                text('slug').notNull().unique(),        // sinaloa, occidente, etc.
+  operator_name:       text('operator_name').notNull(),
+  operator_email:      text('operator_email').notNull(),
+  operator_phone:      text('operator_phone'),
+  states:              jsonb('states').$type<string[]>().default([]),  // estados que cubre
+  commission_operator: integer('commission_operator').notNull().default(70),  // % operador
+  commission_central:  integer('commission_central').notNull().default(30),   // % Antonio
+  status:              text('status').notNull().default('active'),
+  created_at:          timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('regions_slug_idx').on(t.slug),
 ])
 
 // ─── Relations ───────────────────────────────────────────────────────────────

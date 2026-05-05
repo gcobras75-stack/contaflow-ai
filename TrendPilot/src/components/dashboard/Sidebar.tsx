@@ -8,7 +8,7 @@ import {
   TrendingUp, Zap, Star, Search, Megaphone, FlaskConical,
   Radio, RotateCcw, MessageSquare, Users, Coins, Shield,
   Eye, Calendar, Settings, LayoutDashboard, ChevronLeft, ChevronRight,
-  BarChart2, UserCheck, Rocket, TestTube2, Target, Share2,
+  BarChart2, UserCheck, Rocket, TestTube2, Target, Share2, Building2,
 } from 'lucide-react'
 
 const moduleGroups = [
@@ -58,6 +58,7 @@ const moduleGroups = [
   {
     label: 'Sistema',
     modules: [
+      { id: 20, name: 'Franquicia',   label: 'Franquicia',    href: '/dashboard/franquicia',   icon: Building2, adminOnly: true },
       { id: 16, name: 'Tests',        label: 'Pruebas E2E',   href: '/dashboard/test',         icon: TestTube2 },
       { id: 17, name: 'Checklist',    label: 'Launch Check',  href: '/dashboard/launch-checklist', icon: Rocket },
     ],
@@ -132,7 +133,7 @@ export function Sidebar({ role, userName }: SidebarProps) {
               </p>
             )}
             <div className="space-y-0.5">
-              {group.modules.map((mod) => {
+              {group.modules.filter((mod) => !mod.adminOnly || role === 'admin').map((mod) => {
                 const Icon = mod.icon
                 const isActive = pathname.startsWith(mod.href)
                 return (
