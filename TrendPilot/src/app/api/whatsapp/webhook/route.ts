@@ -27,7 +27,28 @@ export async function POST(req: NextRequest) {
     } else {
       const cmd = body.toLowerCase().trim()
 
-      if (cmd === 'ayuda' || cmd === '?') {
+      if (cmd === 'checklist' || cmd === 'estado sistema' || cmd === 'sistema') {
+        respuesta = `TrendPilot - Estado del sistema
+
+FUNCIONANDO:
+Base de datos Neon
+WhatsApp Twilio
+Meta Ads (5 campanas activas)
+Panel dashboard
+Control por WhatsApp
+Webhook activo
+
+PENDIENTE (manual):
+DALL-E 3: recargar billing OpenAI
+Luma AI: renovar API key en lumalabs.ai
+DocuSeal: obtener key en app.docuseal.com
+Resend: obtener key en resend.com
+Videos producto: generacion pendiente
+
+Completado: 75%
+Panel: trendpilot.marketing/dashboard/launch-checklist`
+      }
+      else if (cmd === 'ayuda' || cmd === '?') {
         respuesta = `TrendPilot - Comandos
 
 campanas - estado general
@@ -38,6 +59,7 @@ activar todas - activa pausadas
 pausar todas - pausa activas
 comisiones - finanzas del dia
 tendencias - productos en alza
+checklist - estado del sistema
 ayuda - esta lista`
       }
       else if (cmd === 'campañas' || cmd === 'campanas' || cmd === 'estado') {
