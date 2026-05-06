@@ -178,22 +178,24 @@ export async function POST(request: NextRequest) {
           `
         }
 
-        // Campos del alter (solo si alter=1)
+        // Campos del alter (solo si alter=1) — usa queries parametrizadas
         if (alter) {
           try {
-            await sql.unsafe(`
+            const keyword = `%${c.product_name.split(' ')[0]}%`
+            await sql`
               UPDATE affiliate_campaigns
               SET
-                name              = COALESCE(name, '${c.product_name.replace(/'/g, "''")}'),
-                slug              = COALESCE(slug, '${c.slug}'),
-                product_price     = CASE WHEN (product_price IS NULL OR product_price = 0)
-                                         THEN ${c.product_price} ELSE product_price END,
-                commission_rate   = CASE WHEN (commission_rate IS NULL OR commission_rate = 0)
-                                         THEN ${c.commission_rate} ELSE commission_rate END,
-                affiliate_network = COALESCE(affiliate_network, '${c.affiliate_network}'),
-                affiliate_url     = COALESCE(affiliate_url, '${c.affiliate_url.replace(/'/g, "''")}')
-              WHERE product_name ILIKE '%${c.product_name.split(' ')[0].replace(/'/g, "''")}%'
-            `)
+                name              = COALESCE(name, ${c.product_name}),
+                slug              = COALESCE(slug, ${c.slug}),
+                product_price     = CASE WHEN product_price IS NULL OR product_price = 0
+                                         THEN ${c.product_price}::numeric ELSE product_price END,
+                commission_rate   = CASE WHEN commission_rate IS NULL OR commission_rate <= 0
+                                         THEN ${c.commission_rate}::numeric ELSE commission_rate END,
+                affiliate_network = COALESCE(NULLIF(affiliate_network, ''), ${c.affiliate_network}),
+                affiliate_url     = COALESCE(NULLIF(affiliate_url, ''), ${c.affiliate_url})
+              WHERE product_name ILIKE ${keyword}
+            `
+            results.push(`  ✓ ${c.slug} actualizado`)
           } catch (e) { results.push(`  UPDATE data ${c.slug} error: ${String(e)}`) }
         }
       }
