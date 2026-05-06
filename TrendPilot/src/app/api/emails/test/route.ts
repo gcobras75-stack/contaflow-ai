@@ -4,7 +4,7 @@
 import { NextResponse }   from 'next/server'
 import { render }         from '@react-email/render'
 import * as React         from 'react'
-import { ADMIN_EMAIL }    from '@/lib/resend'
+import { resend, ADMIN_EMAIL } from '@/lib/resend'
 import { WelcomeEmail }   from '@/emails/WelcomeEmail'
 import { CommissionAlert } from '@/emails/CommissionAlert'
 import { WeeklyReport }   from '@/emails/WeeklyReport'
@@ -15,37 +15,26 @@ export async function GET() {
   console.log('RESEND_API_KEY existe:', !!process.env.RESEND_API_KEY)
   console.log('NODE_ENV:', process.env.NODE_ENV)
 
-  // Devuelve la clave de diagnóstico incluso en producción para este endpoint
-  // (el endpoint no hace nada dañino sin la API key real)
   if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_EMAIL_TEST) {
     return NextResponse.json({ error: 'Solo disponible en desarrollo' }, { status: 403 })
   }
 
-  const results: Record<string, { ok: boolean; id?: string; error?: string }> = {}
-
-  // Importar resend dinámicamente para capturar error de inicialización
-  let resendClient: Awaited<ReturnType<typeof import('@/lib/resend').resend.emails.send>> | undefined
-  let FROM_EMAIL_val = 'TrendPilot <onboarding@resend.dev>'
-  let sendFn: typeof import('@/lib/resend').resend.emails.send | null = null
-
-  try {
-    const resendLib = await import('@/lib/resend')
-    FROM_EMAIL_val  = resendLib.FROM_EMAIL
-    sendFn          = resendLib.resend.emails.send.bind(resendLib.resend.emails)
-    console.log('✅ @/lib/resend importado OK — FROM:', FROM_EMAIL_val)
-  } catch (e) {
-    console.error('❌ Error importando @/lib/resend:', e)
+  // Bloquear si no hay API key — da instrucción clara en lugar de 500 vacío
+  if (!process.env.RESEND_API_KEY) {
     return NextResponse.json({
-      error: 'Error al inicializar Resend',
-      detail: String(e),
-      stack:  e instanceof Error ? e.stack : null,
-      hint:   'Verifica RESEND_API_KEY en .env.local',
-    }, { status: 500 })
+      error: 'RESEND_API_KEY no está definida',
+      fix:   'Agrega RESEND_API_KEY=re_xxxxxxxxxxxx en .env.local y reinicia npm run dev',
+      hint:  'Obtén tu key en https://resend.com/api-keys',
+    }, { status: 400 })
   }
 
-  const sendEmail = async (subject: string, html: string, label: string) => {
-    if (!sendFn) throw new Error('sendFn no inicializado')
-    return sendFn({ from: FROM_EMAIL_val, to: ADMIN_EMAIL, subject, html })
+  const results: Record<string, { ok: boolean; id?: string; error?: string }> = {}
+  const FROM_EMAIL_val = process.env.RESEND_DOMAIN_VERIFIED === 'true'
+    ? 'TrendPilot <noreply@trendpilot.marketing>'
+    : 'TrendPilot <onboarding@resend.dev>'
+
+  const sendEmail = async (subject: string, html: string) => {
+    return resend.emails.send({ from: FROM_EMAIL_val, to: ADMIN_EMAIL, subject, html })
   }
 
   // 1. WelcomeEmail
@@ -55,7 +44,7 @@ export async function GET() {
       React.createElement(WelcomeEmail, { name: 'Antonio', region: 'sinaloa', email: ADMIN_EMAIL })
     )
     console.log('✅ WelcomeEmail render OK, len:', html.length)
-    const { data, error } = await sendEmail('[TEST] Bienvenido a TrendPilot', html, 'welcome')
+    const { data, error } = await sendEmail('[TEST] Bienvenido a TrendPilot', html)
     results.welcome = error ? { ok: false, error: JSON.stringify(error) } : { ok: true, id: data?.id }
     console.log('WelcomeEmail send:', results.welcome)
   } catch (e) {
@@ -79,7 +68,7 @@ export async function GET() {
       })
     )
     console.log('✅ CommissionAlert render OK, len:', html.length)
-    const { data, error } = await sendEmail('[TEST] 💰 Nueva comisión', html, 'commission')
+    const { data, error } = await sendEmail('[TEST] 💰 Nueva comisión', html)
     results.commission = error ? { ok: false, error: JSON.stringify(error) } : { ok: true, id: data?.id }
     console.log('CommissionAlert send:', results.commission)
   } catch (e) {
@@ -104,7 +93,7 @@ export async function GET() {
       })
     )
     console.log('✅ WeeklyReport render OK, len:', html.length)
-    const { data, error } = await sendEmail('[TEST] 📊 Reporte semanal', html, 'weekly')
+    const { data, error } = await sendEmail('[TEST] 📊 Reporte semanal', html)
     results.weeklyReport = error ? { ok: false, error: JSON.stringify(error) } : { ok: true, id: data?.id }
     console.log('WeeklyReport send:', results.weeklyReport)
   } catch (e) {
@@ -126,7 +115,7 @@ export async function GET() {
       })
     )
     console.log('✅ CampaignAlert render OK, len:', html.length)
-    const { data, error } = await sendEmail('[TEST] 🚀 Alerta de campaña ROI_ALTO', html, 'campaign')
+    const { data, error } = await sendEmail('[TEST] 🚀 Alerta de campaña ROI_ALTO', html)
     results.campaignAlert = error ? { ok: false, error: JSON.stringify(error) } : { ok: true, id: data?.id }
     console.log('CampaignAlert send:', results.campaignAlert)
   } catch (e) {

@@ -4,7 +4,9 @@
 
 import { Resend } from 'resend'
 
-export const resend = new Resend(process.env.RESEND_API_KEY)
+// Usa 'pending' como fallback para no lanzar en módulo-load si la key falta.
+// Las llamadas a resend.emails.send() fallarán con 401 de la API, no con crash.
+export const resend = new Resend(process.env.RESEND_API_KEY ?? 'pending')
 
 // Mientras el dominio se verifica en Resend, usar onboarding@resend.dev
 // Cuando esté verificado: cambia RESEND_DOMAIN_VERIFIED=true en Vercel
