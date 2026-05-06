@@ -42,15 +42,23 @@ function TrustBar({ score }: { score: number }) {
 
 // ─── Props ─────────────────────────────────────────────────────────────────────
 
+interface CampaignMeta {
+  product_price:     number
+  commission_rate:   number
+  affiliate_network: string
+  affiliate_url:     string | null
+}
+
 interface Props {
-  product: ComparatorProduct
+  product:       ComparatorProduct
+  campaignMeta?: CampaignMeta | null
 }
 
 type Profile = 'ahorrador' | 'rapido' | 'premium'
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 
-export function ComparatorClient({ product }: Props) {
+export function ComparatorClient({ product, campaignMeta }: Props) {
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null)
   const [openFaq,         setOpenFaq]         = useState<number | null>(null)
   const [shared,          setShared]          = useState(false)
@@ -190,6 +198,30 @@ export function ComparatorClient({ product }: Props) {
           <p className="text-[11px] text-brand-faint mt-2">
             Actualizado: {new Date(product.last_updated).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
+
+          {/* Ficha de afiliado — solo si hay datos de BD */}
+          {campaignMeta && campaignMeta.product_price > 0 && (
+            <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-3">
+              <div className="flex items-center gap-1.5 bg-brand-card border border-brand-border rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-brand-faint">Precio ref.</span>
+                <span className="font-bold text-brand-text">
+                  ${campaignMeta.product_price.toLocaleString('es-MX')} MXN
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-brand-card border border-brand-primary/25 rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-brand-faint">Comisión por venta</span>
+                <span className="font-bold text-brand-primary">
+                  {campaignMeta.commission_rate}% = ${Math.round(campaignMeta.product_price * campaignMeta.commission_rate / 100).toLocaleString('es-MX')} MXN
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-brand-card border border-brand-border rounded-xl px-3 py-1.5 text-xs">
+                <span className="text-brand-faint">Red</span>
+                <span className="font-bold text-brand-text">
+                  {campaignMeta.affiliate_network === 'mercadolibre' ? '🛒 MercadoLibre' : '👗 SHEIN'}
+                </span>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* ── SELECTOR DE PERFIL ───────────────────────────────────────────── */}

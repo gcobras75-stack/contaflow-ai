@@ -6,10 +6,9 @@ import dynamic from 'next/dynamic'
 import {
   ArrowLeft, Radio, TrendingUp, TrendingDown, AlertTriangle,
   Pause, Play, Zap, Users, DollarSign, ShoppingCart, BarChart3,
-  FlaskConical, RotateCcw,
+  FlaskConical, RotateCcw, Clock,
 } from 'lucide-react'
 import { cn } from '@/utils'
-import { buildReachBackConfig, reachBackTotals } from '@/lib/reachback'
 import { ProductImage } from '@/components/ui/ProductImage'
 
 // recharts — solo cliente
@@ -20,19 +19,8 @@ const XAxis     = dynamic(() => import('recharts').then(m => m.XAxis), { ssr: fa
 const YAxis     = dynamic(() => import('recharts').then(m => m.YAxis), { ssr: false })
 const Tooltip   = dynamic(() => import('recharts').then(m => m.Tooltip), { ssr: false })
 
-function generateMockDailyData(days = 14) {
-  return Array.from({ length: days }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (days - 1 - i))
-    const sales = Math.round(5000 + Math.random() * 15000)
-    const spend = Math.round(1000 + Math.random() * 3000)
-    return {
-      date:   date.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }),
-      ventas: sales, gasto: spend,
-      roi:    Math.round(((sales - spend) / spend) * 100),
-    }
-  })
-}
+// Placeholder vacío — sin datos reales aún
+const EMPTY_DAILY: { date: string; ventas: number; gasto: number; roi: number }[] = []
 
 const semConfig = {
   green:  { label: 'Activa',      color: 'text-[#00FF88]', bg: 'bg-[#00FF88]/10 border-[#00FF88]/30', icon: TrendingUp    },
@@ -45,39 +33,17 @@ function fmt(n: number) {
   return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n / 100)
 }
 
-// ─── SplitTest variantes mock ─────────────────────────────────────────────────
-
-interface ABVariant {
-  id:     'A' | 'B' | 'C' | 'D'
-  name:   string
-  desc:   string
-  ctr:    number
-  sales:  number
-  spend:  number
-  status: 'winner' | 'running' | 'eliminated'
-}
-
-function buildMockVariants(productName: string): ABVariant[] {
-  const ctrs = [
-    2.1 + Math.random() * 3,
-    1.2 + Math.random() * 2.5,
-    3.8 + Math.random() * 2,
-    1.5 + Math.random() * 2,
-  ].map((c) => Number(c.toFixed(1)))
-  const maxIdx = ctrs.indexOf(Math.max(...ctrs))
-
-  return [
-    { id:'A', name:'Imagen + precio visible',   desc:`Foto de ${productName} con badge de precio en esquina`,             ctr: ctrs[0], sales: Math.round(ctrs[0] * 120), spend: 25, status: maxIdx===0 ? 'winner' : maxIdx>=0 && ctrs[0] < Math.max(...ctrs)-1.5 ? 'eliminated' : 'running' },
-    { id:'B', name:'Producto en uso (lifestyle)',desc:`${productName} siendo usado en contexto cotidiano mexicano`,        ctr: ctrs[1], sales: Math.round(ctrs[1] * 120), spend: 25, status: maxIdx===1 ? 'winner' : ctrs[1] < Math.max(...ctrs)-1.5 ? 'eliminated' : 'running' },
-    { id:'C', name:'Testimonio de cliente',      desc:`"Compré mi ${productName} y quedé encantada" — @cliente_mx`,       ctr: ctrs[2], sales: Math.round(ctrs[2] * 120), spend: 25, status: maxIdx===2 ? 'winner' : ctrs[2] < Math.max(...ctrs)-1.5 ? 'eliminated' : 'running' },
-    { id:'D', name:'Antes vs después',           desc:`Comparación de calidad vs alternativas para ${productName}`,       ctr: ctrs[3], sales: Math.round(ctrs[3] * 120), spend: 25, status: maxIdx===3 ? 'winner' : ctrs[3] < Math.max(...ctrs)-1.5 ? 'eliminated' : 'running' },
-  ]
-}
-
-const VARIANT_STATUS = {
-  winner:    { label: 'GANADORA',   color: 'text-brand-green  bg-brand-green/15  border-brand-green/30'   },
-  running:   { label: 'EN CURSO',   color: 'text-brand-yellow bg-brand-yellow/15 border-brand-yellow/30'  },
-  eliminated:{ label: 'ELIMINADA',  color: 'text-brand-faint  bg-brand-hover     border-brand-border'     },
+// Componente de estado vacío — reutilizable
+function EmptyState({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+      <div className="w-10 h-10 rounded-xl bg-brand-hover flex items-center justify-center mb-1">
+        <Icon size={18} className="text-brand-faint" />
+      </div>
+      <p className="text-sm font-medium text-brand-muted">{title}</p>
+      <p className="text-xs text-brand-faint max-w-xs leading-relaxed">{subtitle}</p>
+    </div>
+  )
 }
 
 export default function CampaignDetailPage({ params }: { params: { id: string } }) {
@@ -88,10 +54,8 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
   const [creatives, setCreatives] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading]     = useState(true)
   const [notFound, setNotFound]   = useState(false)
-  const [dailyData]               = useState(generateMockDailyData(14))
   const [isPending, startTrans]   = useTransition()
   const [actionMsg, setActionMsg] = useState<string | null>(null)
-  const [reachExpanded, setReachExpanded] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -182,7 +146,7 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
   const salesGenerated = Number(campaign?.sales_generated     ?? 0)
   const commissions    = Number(campaign?.commissions_earned  ?? 0)
   const roi            = budgetSpent > 0 ? Math.round(((salesGenerated - budgetSpent) / budgetSpent) * 100) : 0
-  const growthFund     = Math.round(commissions * 0.4)
+  const growthFund     = Math.round(commissions * 0.3)
   const platformEarning = commissions - growthFund
   const spendPct       = budgetTotal > 0 ? Math.min(100, Math.round((budgetSpent / budgetTotal) * 100)) : 0
 
@@ -196,11 +160,10 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
   const platform       = String(campaign?.platform ?? 'meta')
   const productImageUrl = (campaign?.image_url as string | null) ?? null
 
-  // SplitTest & ReachBack — mock basado en datos de campaña
-  const abVariants = buildMockVariants(productName)
-  const winner     = abVariants.find((v) => v.status === 'winner')
-  const reachConfig = buildReachBackConfig(id, productName, platform as 'meta' | 'tiktok' | 'both', budgetTotal)
-  const reachTotals = reachBackTotals(reachConfig)
+  // Sin datos reales = estado vacío (no mocks)
+  const metaSpend = Number(campaign?.meta_spend ?? campaign?.budget_spent ?? 0)
+  const metaImpressions = Number(campaign?.meta_impressions ?? 0)
+  const hasMetaData = metaSpend > 0 || metaImpressions > 0
 
   // Imagen del creativo
   const imageUrl = creatives[0] ? String(creatives[0].image_url ?? '') : ''
@@ -270,122 +233,54 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
           <p className="text-brand-primary font-semibold text-xs mb-2">💰 GrowthFund — Distribución de comisiones</p>
           <div className="grid grid-cols-3 gap-3 text-xs">
             <div className="text-center"><p className="text-brand-muted">Comisión total</p><p className="text-white font-bold">{fmt(commissions)}</p></div>
-            <div className="text-center"><p className="text-brand-muted">Tu ganancia (60%)</p><p className="text-[#00FF88] font-bold">{fmt(platformEarning)}</p></div>
-            <div className="text-center"><p className="text-brand-muted">GrowthFund (40%)</p><p className="text-brand-primary font-bold">{fmt(growthFund)}</p></div>
+            <div className="text-center"><p className="text-brand-muted">Tu ganancia (70%)</p><p className="text-[#00FF88] font-bold">{fmt(platformEarning)}</p></div>
+            <div className="text-center"><p className="text-brand-muted">GrowthFund (30%)</p><p className="text-brand-primary font-bold">{fmt(growthFund)}</p></div>
           </div>
         </div>
       </div>
 
       {/* ── SplitTest™ ──────────────────────────────────────────────────────── */}
       <div className="bg-brand-card border border-brand-border rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <FlaskConical size={15} className="text-brand-primary" />
           <h2 className="text-sm font-semibold text-white">SplitTest™ — A/B Testing automático</h2>
-          {winner && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-brand-green/15 text-brand-green rounded-full border border-brand-green/30 ml-auto">
-              ✓ RESULTADO FINAL
-            </span>
-          )}
         </div>
-
-        {winner && (
-          <div className="mb-3 px-3 py-2 bg-brand-green/8 border border-brand-green/25 rounded-xl text-xs text-brand-green">
-            🏆 <strong>Variante {winner.id} ganó</strong> con {winner.ctr}% CTR — presupuesto 100% redirigido
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          {abVariants.map((v) => {
-            const stCfg = VARIANT_STATUS[v.status]
-            return (
-              <div key={v.id} className={cn('rounded-xl border p-3 space-y-2', v.status === 'eliminated' ? 'opacity-50' : '')}>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white">Variante {v.id}</span>
-                  <span className={cn('text-[8px] font-bold px-1.5 py-0.5 rounded-full border', stCfg.color)}>{stCfg.label}</span>
-                </div>
-                <p className="text-[10px] text-brand-muted leading-relaxed">{v.desc}</p>
-                <div className="flex gap-3 text-xs">
-                  <div>
-                    <p className="text-[9px] text-brand-faint">CTR</p>
-                    <p className={cn('font-bold font-mono', v.status==='winner'?'text-brand-green':'text-white')}>{v.ctr}%</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] text-brand-faint">Ventas</p>
-                    <p className="font-bold font-mono text-white">{v.sales}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] text-brand-faint">Presup.</p>
-                    <p className="font-bold font-mono text-white">{v.spend}%</p>
-                  </div>
-                </div>
-                {/* Barra CTR */}
-                <div className="h-1 bg-brand-border rounded-full overflow-hidden">
-                  <div className={cn('h-full rounded-full', v.status==='winner'?'bg-brand-green':v.status==='running'?'bg-brand-yellow':'bg-brand-border')}
-                    style={{ width:`${Math.min(100, v.ctr * 15)}%` }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        <p className="text-[10px] text-brand-faint mt-3">
-          El sistema evalúa las 4 variantes automáticamente después de 48hrs. La ganadora recibe 100% del presupuesto.
-        </p>
+        <EmptyState
+          icon={Clock}
+          title="SplitTest iniciará cuando la campaña tenga al menos 1,000 impresiones"
+          subtitle="Las métricas de variantes A/B aparecerán después de 48 horas de campaña activa en Meta. Actualmente sin datos suficientes."
+        />
       </div>
 
       {/* ── ReachBack™ ──────────────────────────────────────────────────────── */}
       <div className="bg-brand-card border border-brand-border rounded-2xl p-5">
-        <button
-          className="flex items-center gap-2 w-full text-left"
-          onClick={() => setReachExpanded((v) => !v)}
-        >
-          <RotateCcw size={15} className="text-brand-primary shrink-0" />
-          <h2 className="text-sm font-semibold text-white flex-1">ReachBack™ — Retargeting activo</h2>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-brand-green">+{reachTotals.total_conversions} ventas extra</span>
-            <span className="text-brand-faint text-xs">{reachExpanded ? '▲' : '▼'}</span>
-          </div>
-        </button>
-
-        {/* Resumen */}
-        <div className="grid grid-cols-3 gap-3 mt-3">
-          <div className="bg-brand-hover rounded-xl p-2.5">
-            <p className="text-[9px] text-brand-faint">Personas recuperadas</p>
-            <p className="text-sm font-bold font-mono text-brand-text">{reachTotals.total_reach.toLocaleString('es-MX')}</p>
-          </div>
-          <div className="bg-brand-hover rounded-xl p-2.5">
-            <p className="text-[9px] text-brand-faint">Ventas adicionales</p>
-            <p className="text-sm font-bold font-mono text-brand-green">{reachTotals.total_conversions}</p>
-          </div>
-          <div className="bg-brand-hover rounded-xl p-2.5">
-            <p className="text-[9px] text-brand-faint">Ingresos extra</p>
-            <p className="text-sm font-bold font-mono text-brand-primary">${reachTotals.total_revenue_mxn.toLocaleString('es-MX')}</p>
-          </div>
+        <div className="flex items-center gap-2 mb-2">
+          <RotateCcw size={15} className="text-brand-primary" />
+          <h2 className="text-sm font-semibold text-white">ReachBack™ — Retargeting automático</h2>
         </div>
-
-        {reachExpanded && (
-          <div className="mt-4 space-y-3">
-            {reachConfig.audiences.map((a) => (
-              <div key={a.id} className="border border-brand-border rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-white">{a.name}</p>
-                  <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded-full',
-                    a.status === 'active' ? 'bg-brand-green/15 text-brand-green border border-brand-green/30' : 'bg-brand-hover text-brand-faint border border-brand-border')}>
-                    {a.status === 'active' ? '● ACTIVA' : '○ PAUSADA'}
-                  </span>
-                </div>
-                <p className="text-[10px] text-brand-muted mb-2 italic">"{a.message}"</p>
-                <div className="grid grid-cols-3 gap-2 text-[10px]">
-                  <div><span className="text-brand-faint">Alcance:</span> <span className="text-white">{a.reach.toLocaleString()}</span></div>
-                  <div><span className="text-brand-faint">Ventas:</span> <span className="text-brand-green">{a.conversions}</span></div>
-                  <div><span className="text-brand-faint">Ventana:</span> <span className="text-white">{a.window_days}d</span></div>
-                </div>
-              </div>
-            ))}
-            <p className="text-[10px] text-brand-faint">
-              Presupuesto ReachBack: 20% del presupuesto principal ({fmt(Math.round(budgetTotal * 0.2))})
-            </p>
+        {hasMetaData ? (
+          <div className="grid grid-cols-3 gap-3 mt-3">
+            <div className="bg-brand-hover rounded-xl p-2.5">
+              <p className="text-[9px] text-brand-faint">Impresiones</p>
+              <p className="text-sm font-bold font-mono text-brand-text">{metaImpressions.toLocaleString('es-MX')}</p>
+            </div>
+            <div className="bg-brand-hover rounded-xl p-2.5">
+              <p className="text-[9px] text-brand-faint">Gastado en Meta</p>
+              <p className="text-sm font-bold font-mono text-brand-text">
+                {new Intl.NumberFormat('es-MX', { style:'currency', currency:'MXN', maximumFractionDigits:0 }).format(metaSpend)}
+              </p>
+            </div>
+            <div className="bg-brand-hover rounded-xl p-2.5">
+              <p className="text-[9px] text-brand-faint">Conversiones</p>
+              <p className="text-sm font-bold font-mono text-brand-green">{Number(campaign?.total_conversions ?? 0)}</p>
+            </div>
           </div>
+        ) : (
+          <EmptyState
+            icon={Clock}
+            title="Sin datos suficientes aún"
+            subtitle="Las métricas de retargeting aparecerán después de 48 horas de campaña activa en Meta."
+          />
         )}
       </div>
 
@@ -482,29 +377,39 @@ export default function CampaignDetailPage({ params }: { params: { id: string } 
         <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
           <BarChart3 size={16} className="text-brand-primary" /> Rendimiento últimos 14 días
         </h2>
-        <div className="h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dailyData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} width={40}
-                tickFormatter={(v) => `$${(v / 100).toFixed(0)}`} />
-              <Tooltip
-                contentStyle={{ background: '#0D1F3C', border: '1px solid #1e3a5f', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#94a3b8' }}
-                formatter={(v, name) => [
-                  name === 'roi' ? `${v}%` : `$${(Number(v)/100).toLocaleString('es-MX')} MXN`,
-                  name === 'ventas' ? 'Ventas' : name === 'gasto' ? 'Gasto' : 'ROI',
-                ]}
-              />
-              <Line type="monotone" dataKey="ventas" stroke="#00FF88" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="gasto"  stroke="#FF3B30" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="flex gap-4 mt-2 justify-center">
-          <div className="flex items-center gap-1.5 text-xs text-brand-muted"><span className="w-3 h-0.5 bg-[#00FF88] inline-block" /> Ventas</div>
-          <div className="flex items-center gap-1.5 text-xs text-brand-muted"><span className="w-3 h-0.5 bg-[#FF3B30] inline-block" /> Gasto</div>
-        </div>
+        {EMPTY_DAILY.length > 0 ? (
+          <>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={EMPTY_DAILY} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                  <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} width={40}
+                    tickFormatter={(v) => `$${(v / 100).toFixed(0)}`} />
+                  <Tooltip
+                    contentStyle={{ background: '#0D1F3C', border: '1px solid #1e3a5f', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: '#94a3b8' }}
+                    formatter={(v, name) => [
+                      name === 'roi' ? `${v}%` : `$${(Number(v)/100).toLocaleString('es-MX')} MXN`,
+                      name === 'ventas' ? 'Ventas' : name === 'gasto' ? 'Gasto' : 'ROI',
+                    ]}
+                  />
+                  <Line type="monotone" dataKey="ventas" stroke="#00FF88" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="gasto"  stroke="#FF3B30" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex gap-4 mt-2 justify-center">
+              <div className="flex items-center gap-1.5 text-xs text-brand-muted"><span className="w-3 h-0.5 bg-[#00FF88] inline-block" /> Ventas</div>
+              <div className="flex items-center gap-1.5 text-xs text-brand-muted"><span className="w-3 h-0.5 bg-[#FF3B30] inline-block" /> Gasto</div>
+            </div>
+          </>
+        ) : (
+          <EmptyState
+            icon={BarChart3}
+            title="Sin datos suficientes aún"
+            subtitle="La gráfica de rendimiento aparecerá después de 48 horas de campaña activa en Meta."
+          />
+        )}
       </div>
 
       {/* Acciones */}

@@ -94,7 +94,7 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
     ? Math.min(100, Math.round((campaign.budget_spent / campaign.budget_total) * 100))
     : 0
 
-  const growthFund      = Math.round(campaign.commissions_earned * 0.4)
+  const growthFund      = Math.round(campaign.commissions_earned * 0.3)
   const platformEarning = campaign.commissions_earned - growthFund
   const pb              = platformBadge[campaign.platform] ?? { label: campaign.platform.toUpperCase(), cls: 'bg-brand-hover text-brand-muted' }
 
@@ -166,8 +166,8 @@ export function CampaignCard({ campaign, onApplySuggestions }: {
             <Coins size={10} className="text-brand-primary" />
             <p className="text-brand-primary font-semibold">GrowthFund</p>
           </div>
-          <p className="text-brand-muted">Tu ganancia (60%): <span className="text-brand-text font-medium">{fmt(platformEarning)}</span></p>
-          <p className="text-brand-muted">GrowthFund (40%): <span className="text-brand-primary font-medium">{fmt(growthFund)}</span></p>
+          <p className="text-brand-muted">Tu ganancia (70%): <span className="text-brand-text font-medium">{fmt(platformEarning)}</span></p>
+          <p className="text-brand-muted">GrowthFund (30%): <span className="text-brand-primary font-medium">{fmt(growthFund)}</span></p>
         </div>
       )}
 

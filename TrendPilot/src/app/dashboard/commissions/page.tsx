@@ -87,7 +87,7 @@ function buildProjections(monthlySalesCents: number, rate = 0.20) {
     const growth    = Math.pow(1.03, i)
     const sales     = Math.round(monthlySalesCents * growth)
     const comm      = Math.round(sales * rate)
-    const gf        = Math.round(comm * 0.4)
+    const gf        = Math.round(comm * 0.3)
     const net       = comm - gf
     return { month, commissions: comm, growthfund: gf, net }
   })
@@ -163,7 +163,7 @@ export default function CommissionsPage() {
             </div>
             Comisiones y GrowthFund
           </h1>
-          <p className="text-sm text-brand-muted mt-1">{commissions.length} transacciones · GrowthFund 40% incluido</p>
+          <p className="text-sm text-brand-muted mt-1">{commissions.length} transacciones · GrowthFund 30% incluido</p>
         </div>
         <button
           onClick={() => exportCSV(filtered)}
@@ -178,7 +178,7 @@ export default function CommissionsPage() {
         {[
           { label: '💰 Comisiones del mes', value: fmt(totalComm),   color: '' },
           { label: '📈 Tu ganancia neta',   value: fmt(netEarning),  color: 'gradient-text-green' },
-          { label: '⚡ GrowthFund (40%)',   value: fmt(totalGF),     color: 'gradient-text' },
+          { label: '⚡ GrowthFund (30%)',   value: fmt(totalGF),     color: 'gradient-text' },
           { label: '📊 Pendientes',         value: fmt(pendingComm), color: 'text-brand-yellow' },
         ].map(({ label, value, color }) => (
           <div key={label} className="bg-brand-card border border-brand-border rounded-2xl p-4">
@@ -303,8 +303,8 @@ export default function CommissionsPage() {
             </div>
             <p className="text-xs text-brand-muted leading-relaxed">
               TrendPilot cobra entre <strong className="text-brand-text">15-30%</strong> por cada venta generada.
-              El <strong className="text-brand-text">40%</strong> de esa comisión va al GrowthFund.
-              El <strong className="text-brand-text">60%</strong> restante es la ganancia neta de la plataforma.
+              El <strong className="text-brand-text">30%</strong> de esa comisión va al GrowthFund.
+              El <strong className="text-brand-text">70%</strong> restante es la ganancia neta de la plataforma.
             </p>
           </div>
         </div>
@@ -349,11 +349,11 @@ export default function CommissionsPage() {
                   <Zap size={16} className="text-brand-primary" />
                   <h3 className="text-lg font-bold text-brand-text">GrowthFund activo</h3>
                   <span className="text-[10px] font-bold bg-brand-primary/15 text-brand-primary px-2 py-0.5 rounded-full">
-                    40% de comisiones
+                    30% de comisiones
                   </span>
                 </div>
                 <p className="text-sm text-brand-muted leading-relaxed mb-4">
-                  Cada venta genera una comisión. El 40% de esa comisión se reinvierte
+                  Cada venta genera una comisión. El 30% de esa comisión se reinvierte
                   <strong className="text-brand-text"> automáticamente</strong> en las campañas con mayor ROI,
                   acelerando el crecimiento sin costo adicional para los vendors.
                 </p>
@@ -472,13 +472,13 @@ export default function CommissionsPage() {
                 {
                   label: 'GrowthFund mensual',
                   value: fmt(projections[0].growthfund),
-                  sub:   '40% de comisión',
+                  sub:   '30% de comisión',
                   color: 'gradient-text',
                 },
                 {
                   label: 'Ganancia neta mensual',
                   value: fmt(projections[0].net),
-                  sub:   '60% de comisión',
+                  sub:   '70% de comisión',
                   color: 'gradient-text-green',
                 },
               ].map(({ label, value, sub, color }) => (

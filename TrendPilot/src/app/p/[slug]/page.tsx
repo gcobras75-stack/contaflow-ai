@@ -4,13 +4,48 @@
 
 import type { Metadata } from 'next'
 import { notFound }      from 'next/navigation'
+import { neon }          from '@neondatabase/serverless'
 import { getProduct, getAllSlugs } from '@/lib/comparator-data'
 import { ComparatorClient }        from './ComparatorClient'
+
+export const revalidate = 900   // revalidar cada 15 min
 
 // ── Rutas estáticas ────────────────────────────────────────────────────────────
 
 export function generateStaticParams() {
   return getAllSlugs().map((slug) => ({ slug }))
+}
+
+// ── Tipos ──────────────────────────────────────────────────────────────────────
+
+export interface CampaignMeta {
+  product_price:     number
+  commission_rate:   number
+  affiliate_network: string
+  affiliate_url:     string | null
+}
+
+async function getCampaignMeta(slug: string): Promise<CampaignMeta | null> {
+  try {
+    const sql = neon(process.env.DATABASE_URL!)
+    const rows = await sql`
+      SELECT product_price, commission_rate, affiliate_network, affiliate_url
+      FROM affiliate_campaigns
+      WHERE slug = ${slug}
+      LIMIT 1
+    ` as Record<string, unknown>[]
+
+    if (!rows.length) return null
+    const r = rows[0]
+    return {
+      product_price:     Number(r.product_price    ?? 0),
+      commission_rate:   Number(r.commission_rate  ?? 6),
+      affiliate_network: String(r.affiliate_network ?? 'mercadolibre'),
+      affiliate_url:     (r.affiliate_url as string | null) ?? null,
+    }
+  } catch {
+    return null
+  }
 }
 
 // ── OG Tags para WhatsApp / Meta / TikTok ─────────────────────────────────────
@@ -59,5 +94,7 @@ export default async function ComparatorPage(
 
   if (!product) notFound()
 
-  return <ComparatorClient product={product} />
+  const campaignMeta = await getCampaignMeta(slug)
+
+  return <ComparatorClient product={product} campaignMeta={campaignMeta} />
 }
