@@ -24,14 +24,18 @@ export function EarlySignalWidget() {
       .then((r) => r.ok ? r.json() : null)
       .then((json) => {
         if (!json) { setSignals(MOCK_EARLY_SIGNALS); return }
-        const trends: RawTrend[] = (json.data ?? []).map((t: Record<string, unknown>) => ({
+        const rawTrends: RawTrend[] = (json.data ?? []).map((t: Record<string, unknown>) => ({
           keyword:         t.keyword,
           trend_score:     t.trend_score,
           is_early_signal: t.is_early_signal,
           historical_data: t.historical_data,
           detected_at:     t.detected_at ?? t.created_at,
         }))
-        const detected = detectEarlySignals(trends)
+        // Deduplicar por keyword antes de detectar señales
+        const seenKw = new Map<string, RawTrend>()
+        for (const t of rawTrends) { const k = String(t.keyword).toLowerCase(); if (!seenKw.has(k)) seenKw.set(k, t) }
+        const uniqueTrends = Array.from(seenKw.values())
+        const detected = detectEarlySignals(uniqueTrends)
         setSignals(detected.length > 0 ? detected : MOCK_EARLY_SIGNALS)
       })
       .catch(() => setSignals(MOCK_EARLY_SIGNALS))

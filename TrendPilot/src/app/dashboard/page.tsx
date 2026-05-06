@@ -151,9 +151,12 @@ export default function DashboardPage() {
         setStats(s => ({ ...s, daily_commissions: todayC }))
       }
 
-      // Tendencias reales
+      // Tendencias reales — deduplicar por keyword
       if (trendRes.status === 'fulfilled') {
-        setTrends(trendRes.value.data ?? [])
+        const raw: Trend[] = trendRes.value.data ?? []
+        const seen = new Map<string, Trend>()
+        for (const t of raw) { if (!seen.has(t.keyword.toLowerCase())) seen.set(t.keyword.toLowerCase(), t) }
+        setTrends(Array.from(seen.values()).slice(0, 10))
       }
 
       setLoading(false)

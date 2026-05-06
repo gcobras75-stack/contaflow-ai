@@ -28,15 +28,37 @@ function strHash(s: string): number {
 
 function getIcon(keyword: string) {
   const k = keyword.toLowerCase()
-  if (/audífono|celular|iphone|tablet|laptop|electr|cable|cargador|bluetooth|inalámbr/.test(k)) return Smartphone
+  if (/audífono|celular|iphone|tablet|laptop|electr|cable|cargador|bluetooth|inalámbr|smartwatch|reloj inteligente/.test(k)) return Smartphone
   if (/ropa|camisa|pantalón|vestido|moda|tenis|zapato|playera|chamarra|suéter/.test(k))        return Shirt
-  if (/hogar|casa|cocina|mueble|lamp|silla|mesa|almohada|aspirador/.test(k))                   return Home
-  if (/belleza|crema|suplemento|colágeno|vitamina|maquillaj|perfume|shampoo|skin/.test(k))     return Sparkles
+  if (/hogar|casa|cocina|mueble|lamp|silla|mesa|almohada|aspirador|airfryer|freidora/.test(k)) return Home
+  if (/belleza|crema|suero|vitamina|colágeno|maquillaj|perfume|shampoo|skin|serum/.test(k))    return Sparkles
   if (/deport|gym|pesa|yoga|ejercicio|bicicleta|fitness|proteína/.test(k))                     return Dumbbell
   if (/alimento|comida|bebida|snack|café|fruta|orgánico/.test(k))                              return Apple
-  if (/game|consola|videojuego|nintendo|playstation|xbox|teclado|gaming/.test(k))              return Gamepad2
+  if (/game|consola|videojuego|nintendo|playstation|xbox|teclado|gaming|gamer/.test(k))        return Gamepad2
   if (/herramienta|tornillo|taladro|martillo|llave|construcción/.test(k))                      return Wrench
   return Package
+}
+
+// Emojis por categoría de producto (fallback visual)
+function getEmoji(keyword: string): string {
+  const k = keyword.toLowerCase()
+  if (/airfryer|freidora/.test(k))                                           return '🍳'
+  if (/smartwatch|reloj inteligente/.test(k))                                return '⌚'
+  if (/teclado/.test(k))                                                     return '⌨️'
+  if (/suero|vitamina|colágeno|serum/.test(k))                               return '💊'
+  if (/gps|mascota|perro|gato/.test(k))                                      return '🐾'
+  if (/audífono|auricular|headphone|bluetooth/.test(k))                      return '🎧'
+  if (/celular|iphone|smartphone/.test(k))                                   return '📱'
+  if (/cargador|cable|batería/.test(k))                                      return '🔋'
+  if (/ropa|vestido|camisa|playera/.test(k))                                 return '👕'
+  if (/zapato|tenis/.test(k))                                                return '👟'
+  if (/bolsa|mochila/.test(k))                                               return '👜'
+  if (/crema|perfume|maquillaj|shampoo|belleza/.test(k))                     return '✨'
+  if (/consola|videojuego|gaming|gamer/.test(k))                             return '🎮'
+  if (/herramienta|taladro|martillo/.test(k))                                return '🔧'
+  if (/comida|alimento|snack|café/.test(k))                                  return '🍽️'
+  if (/yoga|gym|deport|fitness/.test(k))                                     return '💪'
+  return '📦'
 }
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -94,10 +116,10 @@ export function ProductImage({
     return () => { cancelled = true }
   }, [keyword, src])
 
-  const hash      = strHash(keyword || 'producto')
-  const [c1, c2]  = GRADIENTS[hash % GRADIENTS.length]
-  const Icon      = getIcon(keyword || '')
-  const initials  = (keyword || '?').split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')
+  const hash     = strHash(keyword || 'producto')
+  const [c1, c2] = GRADIENTS[hash % GRADIENTS.length]
+  const Icon     = getIcon(keyword || '')
+  const emoji    = getEmoji(keyword || '')
 
   const px     = resolvePixelSize(size)
   const isHero = px === null
@@ -127,8 +149,8 @@ export function ProductImage({
         className={cn('w-full h-full flex flex-col items-center justify-center', className)}
         style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
       >
-        <Icon size={40} className="text-white/70 mb-1" />
-        <span className="text-white/50 font-bold text-sm tracking-wide">{initials}</span>
+        <span className="text-5xl mb-1 select-none">{emoji}</span>
+        <Icon size={20} className="text-white/40" />
       </div>
     )
   }
@@ -159,16 +181,13 @@ export function ProductImage({
     return <div style={boxStyle} className={cn('skeleton shrink-0', className)} />
   }
 
-  // Placeholder con gradiente + ícono
+  // Placeholder con gradiente + emoji
   return (
     <div
       style={{ ...boxStyle, background: `linear-gradient(135deg, ${c1}, ${c2})` }}
       className={cn('flex flex-col items-center justify-center shrink-0', className)}
     >
-      <Icon size={Math.round(px * 0.32)} className="text-white/75 mb-0.5" />
-      <span className="text-white/60 font-bold leading-none" style={{ fontSize: Math.round(px * 0.14) }}>
-        {initials}
-      </span>
+      <span className="select-none leading-none" style={{ fontSize: Math.round(px * 0.44) }}>{emoji}</span>
     </div>
   )
 }

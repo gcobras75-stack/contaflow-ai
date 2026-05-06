@@ -28,7 +28,7 @@ export default function CampaignsPage() {
         if (json.data && json.data.length > 0) {
           setCampaigns(json.data.map((c: Record<string, unknown>) => ({
             id:                 c.id,
-            product_name:       (c.products as { name?: string })?.name ?? 'Producto',
+            product_name:       (c.name as string | undefined) ?? (c.products as { name?: string })?.name ?? 'Producto',
             vendor_name:        (c.vendors  as { name?: string })?.name ?? 'Vendor',
             platform:           c.platform,
             semaphore_color:    (c.semaphore_color as SemColor) ?? 'yellow',
