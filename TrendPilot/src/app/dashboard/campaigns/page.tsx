@@ -5,125 +5,10 @@ import Link from 'next/link'
 import { Plus, Radio, TrendingUp, AlertTriangle, TrendingDown, Coins, BarChart2 } from 'lucide-react'
 import { CampaignCard, type CampaignCardData } from '@/components/campaigns/CampaignCard'
 
-// ─── Mock data realista — 5 verde, 3 amarillo, 3 rojo ─────────────────────────
-
-const MOCK_CAMPAIGNS: CampaignCardData[] = [
-  // VERDE — ROI > 150%
-  {
-    id: 'c1', product_name: 'Audífonos Bluetooth Pro',     vendor_name: 'TechStore MX', platform: 'meta',
-    semaphore_color: 'green',  budget_total: 500000,  budget_spent: 210000,  sales_generated: 1800000,
-    commissions_earned: 360000, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c2', product_name: 'Bolsas de tela ecológica',    vendor_name: 'EcoModa',      platform: 'tiktok',
-    semaphore_color: 'green',  budget_total: 300000,  budget_spent: 180000,  sales_generated: 1200000,
-    commissions_earned: 240000, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c3', product_name: 'Suplementos colágeno',        vendor_name: 'VidaSana',     platform: 'both',
-    semaphore_color: 'green',  budget_total: 400000,  budget_spent: 250000,  sales_generated: 1700000,
-    commissions_earned: 340000, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c4', product_name: 'Aretes de plata artesanal',   vendor_name: 'JoyasOaxaca',  platform: 'meta',
-    semaphore_color: 'green',  budget_total: 200000,  budget_spent: 95000,   sales_generated: 820000,
-    commissions_earned: 164000, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c5', product_name: 'Leggings deportivos mujer',   vendor_name: 'FitStyle MX',  platform: 'tiktok',
-    semaphore_color: 'green',  budget_total: 350000,  budget_spent: 140000,  sales_generated: 1050000,
-    commissions_earned: 210000, product_image: null, created_at: new Date().toISOString(),
-  },
-  // GOOGLE SHOPPING — con métricas reales
-  {
-    id: 'cg1', product_name: 'Audífonos Bluetooth Pro',  vendor_name: 'TechStore MX', platform: 'google',
-    semaphore_color: 'green',  budget_total: 500000,  budget_spent: 48500,   sales_generated: 164600,
-    commissions_earned: 32920, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'cg2', product_name: 'Suplementos colágeno',     vendor_name: 'VidaSana',     platform: 'google',
-    semaphore_color: 'green',  budget_total: 350000,  budget_spent: 33200,   sales_generated: 99600,
-    commissions_earned: 19920, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'cg3', product_name: 'Leggings deportivos mujer', vendor_name: 'FitStyle MX',  platform: 'google',
-    semaphore_color: 'red',    budget_total: 250000,  budget_spent: 12400,   sales_generated: 18000,
-    commissions_earned: 3600,
-    pause_reason: 'ROAS 1.45x — por debajo del objetivo (3x)',
-    ai_suggestions: {
-      suggestions: [
-        'Optimizar títulos de producto para búsquedas "leggings deportivos mujer México"',
-        'Aumentar precio de puja para competir mejor en subastas de Shopping',
-        'Agregar imágenes adicionales del producto en Google Merchant Center',
-      ],
-    },
-    product_image: null, created_at: new Date().toISOString(),
-  },
-  // AMARILLO — ROI 80-150%
-  {
-    id: 'c6', product_name: 'Cargador solar portátil',     vendor_name: 'GadgetsMX',    platform: 'tiktok',
-    semaphore_color: 'yellow', budget_total: 250000,  budget_spent: 90000,   sales_generated: 250000,
-    commissions_earned: 50000, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c7', product_name: 'Ropa deportiva mujer',        vendor_name: 'FitStyle MX',  platform: 'meta',
-    semaphore_color: 'yellow', budget_total: 350000,  budget_spent: 150000,  sales_generated: 420000,
-    commissions_earned: 84000, product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c8', product_name: 'Proteína sabor chocolate',    vendor_name: 'NutriPro',     platform: 'both',
-    semaphore_color: 'yellow', budget_total: 300000,  budget_spent: 120000,  sales_generated: 380000,
-    commissions_earned: 76000, product_image: null, created_at: new Date().toISOString(),
-  },
-  // ROJO — ROI < 80% o sin ventas
-  {
-    id: 'c9',  product_name: 'Mini aspiradora inalámbrica', vendor_name: 'HomePlus',    platform: 'meta',
-    semaphore_color: 'red',    budget_total: 300000,  budget_spent: 280000,  sales_generated: 320000,
-    commissions_earned: 64000,
-    pause_reason: 'ROI 14% — por debajo del umbral mínimo (80%)',
-    ai_suggestions: {
-      suggestions: [
-        'Cambiar audiencia a mujeres 35-55 años interesadas en limpieza del hogar',
-        'Reducir presupuesto diario a $150 MXN y optimizar horario 7pm-10pm',
-        'Crear variante con video de demostración de 15 segundos',
-      ],
-    },
-    product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c10', product_name: 'Soporte celular auto magnético', vendor_name: 'AutoParts MX', platform: 'both',
-    semaphore_color: 'red',    budget_total: 200000,  budget_spent: 200000,  sales_generated: 180000,
-    commissions_earned: 36000,
-    pause_reason: '0 ventas en las últimas 48 horas',
-    ai_suggestions: {
-      suggestions: [
-        'El producto tiene mucha competencia — enfocar en diferenciación por precio',
-        'Probar con audiencia de hombres 25-45 con intereses en tecnología y autos',
-        'Agregar testimonio de cliente en el creativo para generar confianza',
-      ],
-    },
-    product_image: null, created_at: new Date().toISOString(),
-  },
-  {
-    id: 'c11', product_name: 'Tapete yoga antideslizante',  vendor_name: 'ZenFit',       platform: 'tiktok',
-    semaphore_color: 'red',    budget_total: 150000,  budget_spent: 130000,  sales_generated: 95000,
-    commissions_earned: 19000,
-    pause_reason: 'Costo por adquisición excede margen del producto',
-    ai_suggestions: {
-      suggestions: [
-        'Intentar con Meta Ads — TikTok no funciona bien para este nicho de precio',
-        'Crear bundle de tapete + correa de yoga para aumentar ticket promedio',
-        'Revisar precio: $890 MXN puede ser alto vs competencia en $650-750 MXN',
-      ],
-    },
-    product_image: null, created_at: new Date().toISOString(),
-  },
-]
-
 type SemColor = 'green' | 'yellow' | 'red' | 'paused'
 
 export default function CampaignsPage() {
-  const [campaigns,   setCampaigns]   = useState<CampaignCardData[]>(MOCK_CAMPAIGNS)
+  const [campaigns,   setCampaigns]   = useState<CampaignCardData[]>([])
   const [loading,     setLoading]     = useState(false)
   const [smOverview,  setSmOverview]  = useState<{ total_spend: number; total_conversions: number; avg_roas: number; avg_ctr: number; mock?: boolean } | null>(null)
 
@@ -157,7 +42,7 @@ export default function CampaignsPage() {
             created_at:         c.created_at,
           })))
         }
-      } catch { /* mantener mocks */ }
+      } catch { /* mantener vacío */ }
       finally { setLoading(false) }
     }
     load()

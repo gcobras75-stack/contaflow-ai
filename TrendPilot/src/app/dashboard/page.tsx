@@ -1,9 +1,10 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import {
   TrendingUp, Users, Coins, Bell,
-  ArrowUpRight, ArrowDownRight, Flame, Zap,
-  Radio, ChevronRight, Calendar,
+  ArrowUpRight, Flame, Zap,
+  Radio, ChevronRight, Target, Package,
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatMXN, getSemaphoreClasses } from '@/utils'
@@ -13,38 +14,32 @@ import { EarlySignalWidget } from '@/components/dashboard/EarlySignalWidget'
 import { GrowthFundWidget } from '@/components/dashboard/GrowthFundWidget'
 import { ProductImage } from '@/components/ui/ProductImage'
 
-const stats = {
-  daily_commissions:        18_450,
-  daily_commissions_change: 12.4,
-  active_vendors:           34,
-  active_vendors_change:    3,
-  active_campaigns:         7,
-  pending_approvals:        5,
-  growth_fund:              124_500,
+interface DashboardStats {
+  daily_commissions: number
+  active_vendors:    number
+  active_campaigns:  number
+  pending_approvals: number
+  growth_fund:       number
 }
 
-const mockTrends = [
-  { keyword: 'Aretes de plata',          score: 94, source: 'mercadolibre', is_early: true,  badge: 'EXPLOSIVO',   price: 320 },
-  { keyword: 'Bolsas de tela ecológica', score: 88, source: 'google',       is_early: false, badge: 'EN ALERTA',   price: 180 },
-  { keyword: 'Suplementos colágeno',     score: 82, source: 'tiktok',       is_early: true,  badge: 'EXPLOSIVO',   price: 450 },
-  { keyword: 'Ropa deportiva mujer',     score: 79, source: 'google',       is_early: false, badge: 'EN ALERTA',   price: 620 },
-  { keyword: 'Mini aspiradora',          score: 74, source: 'mercadolibre', is_early: false, badge: 'ESTABLE',     price: 890 },
-  { keyword: 'Teclado mecánico',         score: 71, source: 'mercadolibre', is_early: false, badge: 'ESTABLE',     price: 1200 },
-]
+interface Trend {
+  id:           string
+  keyword:      string
+  trend_score:  number
+  source:       string
+  is_early_signal: boolean
+}
 
-const mockCampaigns = [
-  { name: 'Aretes Plata — Meta',      platform: 'meta',   color: 'green'  as SemaphoreColor, roi: 210, budget_spent: 3_200, keyword: 'Aretes de plata' },
-  { name: 'Bolsas Eco — TikTok',      platform: 'tiktok', color: 'green'  as SemaphoreColor, roi: 175, budget_spent: 1_800, keyword: 'Bolsas de tela ecológica' },
-  { name: 'Colágeno — Meta',          platform: 'meta',   color: 'yellow' as SemaphoreColor, roi: 112, budget_spent: 2_100, keyword: 'Suplementos colágeno' },
-  { name: 'Ropa Deportiva — TikTok',  platform: 'tiktok', color: 'yellow' as SemaphoreColor, roi: 95,  budget_spent: 980,   keyword: 'Ropa deportiva mujer' },
-  { name: 'Mini Aspiradora — Meta',   platform: 'meta',   color: 'red'    as SemaphoreColor, roi: 61,  budget_spent: 1_500, keyword: 'Mini aspiradora' },
-]
+interface Campaign {
+  id:              string
+  name:            string
+  platform:        string
+  semaphore_color: SemaphoreColor
+  budget_spent:    number
+  sales_generated: number
+}
 
-const mockAlerts = [
-  { type: 'vendor',   message: 'Nuevo vendedor pendiente: Moda Fina MX',         time: 'hace 12 min', urgent: false },
-  { type: 'product',  message: '3 productos esperan aprobación de ProductScore',  time: 'hace 45 min', urgent: true  },
-  { type: 'campaign', message: 'Mini Aspiradora: ROI bajo 80% — revisar',         time: 'hace 2 hrs',  urgent: true  },
-]
+// ─── Config de badges de tendencias ──────────────────────────────────────────
 
 const badgeConfig = {
   'EXPLOSIVO': { bg: 'bg-brand-red/15',    text: 'text-brand-red',    pulse: true  },
@@ -58,7 +53,13 @@ const sourceColor: Record<string, string> = {
   tiktok:       'text-[#FF0050] bg-[#FF0050]/10',
 }
 
-// ─── Componentes ─────────────────────────────────────────────────────────────
+function trendBadge(score: number): keyof typeof badgeConfig {
+  if (score >= 88) return 'EXPLOSIVO'
+  if (score >= 72) return 'EN ALERTA'
+  return 'ESTABLE'
+}
+
+// ─── StatCard ─────────────────────────────────────────────────────────────────
 
 function StatCard({
   label, value, change, icon: Icon, gradient, delay = 0,
@@ -80,10 +81,10 @@ function StatCard({
       <p className={`text-2xl font-bold font-mono tracking-tight ${gradient ? 'gradient-text-green' : 'text-brand-text'}`}>
         {value}
       </p>
-      {change !== undefined && (
-        <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${change >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
-          {change >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-          <span>{Math.abs(change)}% vs ayer</span>
+      {change !== undefined && change > 0 && (
+        <div className="flex items-center gap-1 mt-2 text-xs font-medium text-brand-green">
+          <ArrowUpRight size={12} />
+          <span>+{change} nuevas</span>
         </div>
       )}
     </div>
@@ -97,6 +98,77 @@ export default function DashboardPage() {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
 
+  const [stats, setStats] = useState<DashboardStats>({
+    daily_commissions: 0,
+    active_vendors:    0,
+    active_campaigns:  0,
+    pending_approvals: 0,
+    growth_fund:       0,
+  })
+  const [trends,    setTrends]    = useState<Trend[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [loading,   setLoading]   = useState(true)
+
+  useEffect(() => {
+    async function loadDashboard() {
+      const [campaignRes, vendorRes, commRes, trendRes] = await Promise.allSettled([
+        fetch('/api/campaigns?limit=5').then(r => r.json()),
+        fetch('/api/vendors?limit=1').then(r => r.json()),
+        fetch('/api/commissions?limit=50').then(r => r.json()),
+        fetch('/api/trends?limit=6').then(r => r.json()),
+      ])
+
+      // Campañas reales
+      if (campaignRes.status === 'fulfilled') {
+        const data: Record<string, unknown>[] = campaignRes.value.data ?? []
+        setCampaigns(data.slice(0, 5).map(c => ({
+          id:              c.id as string,
+          name:            (c.name as string | undefined) ?? ((c.products as Record<string, unknown>)?.name as string | undefined) ?? 'Campaña',
+          platform:        (c.platform as string) ?? 'meta',
+          semaphore_color: (c.semaphore_color as SemaphoreColor) ?? 'green',
+          budget_spent:    (c.budget_spent as number) ?? 0,
+          sales_generated: (c.sales_generated as number) ?? 0,
+        })))
+        setStats(s => ({
+          ...s,
+          active_campaigns: campaignRes.value.total ?? data.length,
+          growth_fund:      data.reduce((sum, c) => sum + ((c.budget_fund as number) ?? 0), 0),
+        }))
+      }
+
+      // Vendors reales
+      if (vendorRes.status === 'fulfilled') {
+        setStats(s => ({ ...s, active_vendors: vendorRes.value.total ?? 0 }))
+      }
+
+      // Comisiones reales
+      if (commRes.status === 'fulfilled') {
+        const allComms: Record<string, unknown>[] = commRes.value.data ?? []
+        const today  = new Date().toDateString()
+        const todayC = allComms
+          .filter(c => new Date(c.created_at as string).toDateString() === today)
+          .reduce((sum, c) => sum + ((c.commission_amount as number) ?? 0), 0)
+        setStats(s => ({ ...s, daily_commissions: todayC }))
+      }
+
+      // Tendencias reales
+      if (trendRes.status === 'fulfilled') {
+        setTrends(trendRes.value.data ?? [])
+      }
+
+      setLoading(false)
+    }
+
+    loadDashboard()
+  }, [])
+
+  const colorMap = {
+    green:  { dot: 'bg-brand-green',  text: 'text-brand-green',  bg: 'bg-brand-green/8'  },
+    yellow: { dot: 'bg-brand-yellow', text: 'text-brand-yellow', bg: 'bg-brand-yellow/8' },
+    red:    { dot: 'bg-brand-red',    text: 'text-brand-red',    bg: 'bg-brand-red/8'    },
+    paused: { dot: 'bg-brand-red',    text: 'text-brand-red',    bg: 'bg-brand-red/8'    },
+  }
+
   return (
     <div className="space-y-6 max-w-[1400px]">
 
@@ -109,27 +181,50 @@ export default function DashboardPage() {
             </h1>
             <p className="text-sm text-brand-muted mt-0.5 capitalize">{today}</p>
           </div>
-          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-brand-primary/10 border border-brand-primary/20 rounded-xl">
-            <Flame size={14} className="text-brand-primary" />
-            <span className="text-xs font-medium text-brand-text">
-              TrendPilot detectó 3 oportunidades hoy
-            </span>
-          </div>
+          {stats.active_campaigns > 0 && (
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-brand-green/10 border border-brand-green/20 rounded-xl">
+              <span className="w-2 h-2 bg-brand-green rounded-full animate-pulse" />
+              <span className="text-xs font-medium text-brand-text">
+                {stats.active_campaigns} campañas activas en Meta
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats reales */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        <StatCard label="Comisiones hoy"      value={formatMXN(stats.daily_commissions)} change={stats.daily_commissions_change} icon={Coins}  gradient delay={0}   />
-        <StatCard label="Vendedores activos"  value={stats.active_vendors.toString()}    change={stats.active_vendors_change}    icon={Users}         delay={60}  />
-        <StatCard label="Campañas activas"    value={stats.active_campaigns.toString()}                                          icon={Radio}         delay={120} />
-        <StatCard label="Pendientes aprobación" value={stats.pending_approvals.toString()}                                       icon={Bell}          delay={180} />
+        <StatCard
+          label="Comisiones hoy"
+          value={loading ? '—' : formatMXN(stats.daily_commissions)}
+          icon={Coins}
+          gradient
+          delay={0}
+        />
+        <StatCard
+          label="Vendedores activos"
+          value={loading ? '—' : stats.active_vendors.toString()}
+          icon={Users}
+          delay={60}
+        />
+        <StatCard
+          label="Campañas activas"
+          value={loading ? '—' : stats.active_campaigns.toString()}
+          icon={Radio}
+          delay={120}
+        />
+        <StatCard
+          label="Pendientes aprobación"
+          value={loading ? '—' : stats.pending_approvals.toString()}
+          icon={Bell}
+          delay={180}
+        />
       </div>
 
       {/* Grid principal */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* TrendRadar */}
+        {/* TrendRadar — datos reales */}
         <div className="bg-brand-card border border-brand-border rounded-2xl p-5 animate-fade-in" style={{ animationDelay: '100ms' }}>
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
@@ -144,50 +239,63 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="space-y-2">
-            {mockTrends.map((trend) => {
-              const badge = badgeConfig[trend.badge as keyof typeof badgeConfig] ?? badgeConfig['ESTABLE']
-              const src   = sourceColor[trend.source] ?? 'text-brand-muted bg-brand-hover'
-              return (
-                <div
-                  key={trend.keyword}
-                  className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-brand-hover transition-colors group cursor-pointer"
-                >
-                  {/* Imagen del producto */}
-                  <ProductImage keyword={trend.keyword} size={48} radius={10} className="shrink-0" />
-
-                  {/* Score */}
-                  <div className="w-8 text-center shrink-0">
-                    <span className="text-sm font-bold font-mono text-brand-text">{trend.score}</span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-sm font-medium text-brand-text truncate">{trend.keyword}</span>
-                      {trend.is_early && <Zap size={10} className="text-brand-yellow shrink-0" />}
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-12 animate-pulse bg-brand-hover rounded-xl" />
+              ))}
+            </div>
+          ) : trends.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <TrendingUp size={28} className="text-brand-faint mb-3" />
+              <p className="text-sm font-semibold text-brand-text mb-1">Cargando tendencias...</p>
+              <p className="text-xs text-brand-faint max-w-xs">
+                El TrendRadar analiza MercadoLibre y Google Trends en tiempo real. Los datos aparecerán en breve.
+              </p>
+              <Link href="/dashboard/trends" className="mt-3 text-xs text-brand-primary hover:underline">
+                Ver TrendRadar completo →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {trends.map((trend) => {
+                const badge  = trendBadge(trend.trend_score)
+                const badgeCfg = badgeConfig[badge]
+                const src    = sourceColor[trend.source] ?? 'text-brand-muted bg-brand-hover'
+                return (
+                  <div
+                    key={trend.id}
+                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-brand-hover transition-colors cursor-pointer"
+                  >
+                    <ProductImage keyword={trend.keyword} size={48} radius={10} className="shrink-0" />
+                    <div className="w-8 text-center shrink-0">
+                      <span className="text-sm font-bold font-mono text-brand-text">{trend.trend_score}</span>
                     </div>
-                    <div className="h-1 rounded-full bg-brand-hover">
-                      <div className="score-bar-fill" style={{ width: `${trend.score}%` }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-sm font-medium text-brand-text truncate">{trend.keyword}</span>
+                        {trend.is_early_signal && <Zap size={10} className="text-brand-yellow shrink-0" />}
+                      </div>
+                      <div className="h-1 rounded-full bg-brand-hover">
+                        <div className="score-bar-fill" style={{ width: `${trend.trend_score}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badgeCfg.bg} ${badgeCfg.text} ${badgeCfg.pulse ? 'animate-pulse' : ''}`}>
+                        {badge}
+                      </span>
+                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${src} hidden sm:inline`}>
+                        {trend.source === 'mercadolibre' ? 'ML' : trend.source.toUpperCase()}
+                      </span>
                     </div>
                   </div>
-
-                  {/* Badge + source */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${badge.bg} ${badge.text} ${badge.pulse ? 'animate-pulse' : ''}`}>
-                      {trend.badge}
-                    </span>
-                    <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-full ${src} hidden sm:inline`}>
-                      {trend.source === 'mercadolibre' ? 'ML' : trend.source.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {/* CampaignPilot semáforo */}
+        {/* CampaignPilot — datos reales */}
         <div className="bg-brand-card border border-brand-border rounded-2xl p-5 animate-fade-in" style={{ animationDelay: '160ms' }}>
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
@@ -202,33 +310,49 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="space-y-2">
-            {mockCampaigns.map((c) => {
-              const colorMap = {
-                green:  { dot: 'bg-brand-green',  text: 'text-brand-green',  bg: 'bg-brand-green/8'  },
-                yellow: { dot: 'bg-brand-yellow', text: 'text-brand-yellow', bg: 'bg-brand-yellow/8' },
-                red:    { dot: 'bg-brand-red',    text: 'text-brand-red',    bg: 'bg-brand-red/8'    },
-                paused: { dot: 'bg-brand-red',    text: 'text-brand-red',    bg: 'bg-brand-red/8'    },
-              }
-              const cfg = colorMap[c.color] ?? colorMap.yellow
-              return (
-                <div key={c.name} className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-transparent ${cfg.bg} hover:border-brand-border transition-all`}>
-                  {/* Imagen pequeña del producto */}
-                  <ProductImage keyword={c.keyword} size={40} radius={8} className="shrink-0" />
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot} ${c.color === 'green' ? 'animate-pulse' : ''}`} />
-                  <span className="flex-1 text-sm text-brand-text truncate font-medium">{c.name}</span>
-                  <span className={`text-sm font-bold font-mono ${cfg.text}`}>
-                    {c.roi > 0 ? '+' : ''}{c.roi}%
-                  </span>
-                  <span className="text-xs text-brand-faint font-mono tabular-nums hidden sm:block">
-                    ${(c.budget_spent / 100).toLocaleString('es-MX', { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          {loading ? (
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-10 animate-pulse bg-brand-hover rounded-xl" />
+              ))}
+            </div>
+          ) : campaigns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Target size={28} className="text-brand-faint mb-3" />
+              <p className="text-sm font-semibold text-brand-text mb-1">Campañas activas</p>
+              <p className="text-xs text-brand-faint max-w-xs">
+                Las campañas aparecerán aquí cuando estén configuradas en Meta Ads Manager.
+              </p>
+              <Link href="/dashboard/campaigns" className="mt-3 text-xs text-brand-primary hover:underline">
+                Ver CampaignPilot →
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {campaigns.map((c) => {
+                const cfg = colorMap[c.semaphore_color] ?? colorMap.yellow
+                const roi = c.budget_spent > 0
+                  ? Math.round(((c.sales_generated - c.budget_spent) / c.budget_spent) * 100)
+                  : 0
+                return (
+                  <div key={c.id} className={`flex items-center gap-3 px-3 py-2 rounded-xl border border-transparent ${cfg.bg} hover:border-brand-border transition-all`}>
+                    <ProductImage keyword={c.name} size={40} radius={8} className="shrink-0" />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot} ${c.semaphore_color === 'green' ? 'animate-pulse' : ''}`} />
+                    <span className="flex-1 text-sm text-brand-text truncate font-medium">{c.name}</span>
+                    {c.sales_generated > 0 ? (
+                      <span className={`text-sm font-bold font-mono ${cfg.text}`}>
+                        {roi > 0 ? '+' : ''}{roi}%
+                      </span>
+                    ) : (
+                      <span className="text-xs text-brand-faint font-mono">Iniciando...</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
-          {/* GrowthFund */}
+          {/* GrowthFund real */}
           <div className="mt-4 p-3 rounded-xl bg-brand-primary/8 border border-brand-primary/20">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -236,7 +360,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-semibold text-brand-text">GrowthFund disponible</span>
               </div>
               <span className="text-sm font-bold font-mono gradient-text">
-                {formatMXN(stats.growth_fund)}
+                {loading ? '—' : formatMXN(stats.growth_fund)}
               </span>
             </div>
           </div>
@@ -250,38 +374,29 @@ export default function DashboardPage() {
         <SeasonAlertWidget />
       </div>
 
-      {/* Alertas */}
+      {/* Afiliados configurados — info real */}
       <div className="bg-brand-card border border-brand-border rounded-2xl p-5 animate-fade-in" style={{ animationDelay: '240ms' }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Bell size={15} className="text-brand-yellow" />
-              {mockAlerts.some((a) => a.urgent) && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-brand-red rounded-full animate-pulse" />
-              )}
-            </div>
-            <h2 className="text-sm font-bold text-brand-text">Alertas pendientes</h2>
-            <span className="text-[10px] font-bold bg-brand-yellow/15 text-brand-yellow px-2 py-0.5 rounded-full">
-              {mockAlerts.length}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 mb-4">
+          <Package size={15} className="text-brand-yellow" />
+          <h2 className="text-sm font-bold text-brand-text">Plataformas de afiliados</h2>
         </div>
-        <div className="space-y-2">
-          {mockAlerts.map((alert, i) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {[
+            { name: 'MercadoLibre', id: 'GCOBRAS', status: 'active' },
+            { name: 'SHEIN',        id: '4544144225', status: 'active' },
+            { name: 'Temu',         id: 'Pendiente', status: 'pending' },
+            { name: 'AliExpress',   id: 'Pendiente', status: 'pending' },
+            { name: 'Amazon MX',    id: 'Pendiente', status: 'pending' },
+          ].map(({ name, id, status }) => (
             <div
-              key={i}
-              className="flex items-center justify-between p-3 rounded-xl bg-brand-hover/60 hover:bg-brand-hover transition-colors cursor-pointer group"
+              key={name}
+              className={`p-3 rounded-xl border ${status === 'active' ? 'border-brand-green/30 bg-brand-green/5' : 'border-brand-border bg-brand-hover/30'}`}
             >
-              <div className="flex items-center gap-3">
-                {alert.urgent && (
-                  <span className="w-1.5 h-1.5 bg-brand-red rounded-full animate-pulse shrink-0" />
-                )}
-                <p className="text-sm text-brand-text">{alert.message}</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-brand-green animate-pulse' : 'bg-brand-faint'}`} />
+                <span className="text-xs font-bold text-brand-text">{name}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-brand-faint whitespace-nowrap">{alert.time}</span>
-                <ChevronRight size={12} className="text-brand-faint group-hover:text-brand-muted transition-colors" />
-              </div>
+              <span className="text-[10px] text-brand-faint font-mono">{id}</span>
             </div>
           ))}
         </div>

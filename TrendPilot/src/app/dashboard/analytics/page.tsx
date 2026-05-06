@@ -308,112 +308,21 @@ export default function AnalyticsPage() {
       {tab === 'google' && (
         <div className="space-y-5 animate-fade-in">
 
-          {/* KPIs Google Shopping */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[
-              { label: 'Impresiones',    value: '25,500',   icon: '👁️',  color: 'text-[#4285F4]', border: 'border-[#4285F4]/20' },
-              { label: 'Clics',          value: '1,045',    icon: '👆',  color: 'text-brand-green', border: 'border-brand-green/20' },
-              { label: 'CTR promedio',   value: '4.1%',     icon: '📊',  color: 'text-brand-yellow', border: 'border-brand-yellow/20' },
-              { label: 'ROAS',           value: '3.40x',    icon: '💰',  color: 'text-brand-green', border: 'border-brand-green/25' },
-            ].map(({ label, value, icon, color, border }) => (
-              <div key={label} className={cn('bg-brand-card border rounded-2xl p-4', border)}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] font-semibold text-brand-faint uppercase tracking-widest leading-tight">{label}</p>
-                  <span className="text-sm">{icon}</span>
-                </div>
-                <p className={cn('text-lg font-bold font-mono', color)}>{value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Campañas Google Shopping */}
-          <div className="bg-brand-card border border-brand-border rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm font-semibold text-brand-text">Campañas Google Shopping</p>
-                <p className="text-[10px] text-brand-faint mt-0.5">
-                  Rendimiento de campañas Shopping activas
-                  <span className="ml-2 px-1.5 py-0.5 bg-brand-yellow/10 text-brand-yellow rounded-full">DEMO</span>
-                </p>
-              </div>
+          {/* Pending state — sin credenciales Google Ads */}
+          <div className="bg-brand-card border border-brand-border rounded-2xl p-10 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#4285F4]/10 flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">🛒</span>
             </div>
-            <div className="space-y-3">
-              {[
-                { name: 'Shopping — Audífonos Bluetooth Pro', impressions: 12400, clicks: 645, ctr: 5.2, roas: 3.40, cost: 485, status: 'enabled' as const },
-                { name: 'Shopping — Suplementos colágeno',    impressions: 8900,  clicks: 312, ctr: 3.5, roas: 3.00, cost: 332, status: 'enabled' as const },
-                { name: 'Shopping — Leggings deportivos',     impressions: 4200,  clicks: 88,  ctr: 2.1, roas: 1.45, cost: 124, status: 'paused'  as const },
-              ].map((c) => (
-                <div key={c.name} className="flex items-center gap-3 p-3 bg-brand-hover rounded-xl">
-                  <div className={cn(
-                    'w-2 h-2 rounded-full shrink-0',
-                    c.status === 'enabled' ? 'bg-brand-green animate-pulse' : 'bg-brand-red',
-                  )} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-brand-text truncate">{c.name}</p>
-                    <p className="text-[10px] text-brand-faint">
-                      {c.impressions.toLocaleString('es-MX')} imp · {c.clicks} clics · CTR {c.ctr}%
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className={cn(
-                      'text-xs font-bold font-mono px-2 py-1 rounded-lg',
-                      c.roas >= 3 ? 'text-brand-green bg-brand-green/10' : 'text-brand-yellow bg-brand-yellow/10',
-                    )}>
-                      {c.roas}x ROAS
-                    </span>
-                    <p className="text-[10px] text-brand-faint mt-0.5">${c.cost} MXN</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Comparativa de plataformas */}
-          <div className="bg-brand-card border border-brand-border rounded-2xl p-5">
-            <p className="text-sm font-semibold text-brand-text mb-1">Comparativa de plataformas</p>
-            <p className="text-[10px] text-brand-faint mb-5">Meta Ads vs TikTok Ads vs Google Shopping — datos demo</p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-brand-border">
-                    <th className="text-left py-2 px-3 text-brand-faint font-semibold">Plataforma</th>
-                    <th className="text-right py-2 px-3 text-brand-faint font-semibold">Impresiones</th>
-                    <th className="text-right py-2 px-3 text-brand-faint font-semibold">CTR</th>
-                    <th className="text-right py-2 px-3 text-brand-faint font-semibold">ROAS</th>
-                    <th className="text-right py-2 px-3 text-brand-faint font-semibold">Conversiones</th>
-                    <th className="text-right py-2 px-3 text-brand-faint font-semibold">CPC prom</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-brand-border">
-                  {[
-                    { platform: 'Meta Ads',        color: '#1877F2', impressions: '2.1M', ctr: '1.8%', roas: '2.6x', conversions: 142, cpc: '$18' },
-                    { platform: 'TikTok Ads',      color: '#FF0050', impressions: '3.4M', ctr: '2.3%', roas: '2.2x', conversions: 98,  cpc: '$12' },
-                    { platform: 'Google Shopping', color: '#4285F4', impressions: '25.5K', ctr: '4.1%', roas: '3.4x', conversions: 68, cpc: '$46' },
-                  ].map((row) => (
-                    <tr key={row.platform} className="hover:bg-brand-hover transition-colors">
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: row.color }} />
-                          <span className="font-semibold text-brand-text">{row.platform}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-right text-brand-muted tabular-nums">{row.impressions}</td>
-                      <td className="py-3 px-3 text-right text-brand-yellow tabular-nums font-mono">{row.ctr}</td>
-                      <td className="py-3 px-3 text-right tabular-nums font-mono">
-                        <span className={cn(
-                          'font-bold px-1.5 py-0.5 rounded',
-                          parseFloat(row.roas) >= 3 ? 'text-brand-green bg-brand-green/10' : 'text-brand-yellow bg-brand-yellow/10',
-                        )}>
-                          {row.roas}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right text-brand-muted tabular-nums">{row.conversions}</td>
-                      <td className="py-3 px-3 text-right text-brand-muted tabular-nums font-mono">{row.cpc}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <p className="text-sm font-semibold text-brand-text mb-1">Google Shopping pendiente de configuración</p>
+            <p className="text-xs text-brand-muted mb-5 max-w-sm mx-auto">
+              Los datos reales de impresiones, clics y ROAS aparecerán aquí cuando conectes tu cuenta Google Ads.
+            </p>
+            <a
+              href="/dashboard/setup/google-ads"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#4285F4]/15 border border-[#4285F4]/25 text-[#4285F4] rounded-xl text-sm font-semibold hover:bg-[#4285F4]/25 transition-colors"
+            >
+              Configurar Google Ads
+            </a>
           </div>
 
           {/* CTA configuración */}

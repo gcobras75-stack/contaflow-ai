@@ -37,38 +37,6 @@ interface Commission {
 
 type Tab = 'commissions' | 'growthfund' | 'projections'
 
-// ─── Mock ─────────────────────────────────────────────────────────────────────
-
-function buildMock(): Commission[] {
-  const vendors  = ['TechStore MX', 'EcoModa', 'VidaSana', 'FitStyle MX', 'JoyasOaxaca', 'NutriPro', 'HomePlus', 'GadgetsMX']
-  const products = ['Audífonos BT Pro', 'Bolsas ecológicas', 'Colágeno Premium', 'Leggings Deportivos', 'Aretes Plata', 'Proteína Chocolate', 'Aspiradora Mini', 'Cargador Solar']
-  const rates    = [0.15, 0.18, 0.20, 0.22, 0.25, 0.28, 0.30]
-  const statuses = ['paid', 'paid', 'paid', 'paid', 'pending'] as const
-  const saleBases = [12000, 25000, 8000, 45000, 18000, 32000, 6000, 22000, 55000, 9500]
-
-  return Array.from({ length: 25 }, (_, i) => {
-    const sale = Math.round((saleBases[i % saleBases.length] + Math.random() * 5000) * 100)
-    const rate = rates[i % rates.length]
-    const comm = Math.round(sale * rate)
-    const gf   = Math.round(comm * 0.4)
-    const date = new Date()
-    date.setDate(date.getDate() - Math.floor(Math.random() * 30))
-    return {
-      id:                 `comm-${String(i + 1).padStart(3, '0')}`,
-      campaign_id:        `camp-${i % 8}`,
-      vendor_id:          `vendor-${i % 8}`,
-      sale_amount:        sale,
-      commission_rate:    rate,
-      commission_amount:  comm,
-      growth_fund_amount: gf,
-      status:             statuses[i % 5],
-      created_at:         date.toISOString(),
-      product_name:       products[i % products.length],
-      vendor_name:        vendors[i % vendors.length],
-    }
-  })
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(n: number) {
@@ -125,15 +93,6 @@ function buildProjections(monthlySalesCents: number, rate = 0.20) {
   })
 }
 
-// Últimas 5 distribuciones de GrowthFund (mock hasta tener datos reales)
-const MOCK_DISTRIBUTIONS = [
-  { campaign: 'Aretes Plata — Meta',    amount: 4200_00, date: 'hace 2 días' },
-  { campaign: 'Bolsas Eco — TikTok',    amount: 2800_00, date: 'hace 3 días' },
-  { campaign: 'Colágeno — Meta',        amount: 1900_00, date: 'hace 5 días' },
-  { campaign: 'Ropa Deportiva — TikTok',amount: 1400_00, date: 'hace 7 días' },
-  { campaign: 'Audífonos BT — Meta',    amount:  800_00, date: 'hace 9 días' },
-]
-
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 export default function CommissionsPage() {
@@ -153,12 +112,10 @@ export default function CommissionsPage() {
         const res = await fetch('/api/commissions?limit=100')
         if (res.ok) {
           const json = await res.json()
-          setCommissions(json.data?.length > 0 ? json.data : buildMock())
-        } else {
-          setCommissions(buildMock())
+          setCommissions(json.data ?? [])
         }
       } catch {
-        setCommissions(buildMock())
+        setCommissions([])
       } finally {
         setLoading(false)
       }
@@ -425,22 +382,29 @@ export default function CommissionsPage() {
           {/* Últimas distribuciones */}
           <div className="bg-brand-card border border-brand-border rounded-2xl p-5">
             <h3 className="text-sm font-bold text-brand-text mb-4">Distribuciones recientes</h3>
-            <div className="space-y-2">
-              {MOCK_DISTRIBUTIONS.map((d, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl hover:bg-brand-hover/40 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-lg bg-brand-primary/15 flex items-center justify-center shrink-0">
-                      <Zap size={11} className="text-brand-primary" />
+            {commissions.length === 0 ? (
+              <div className="text-center py-10">
+                <Zap size={28} className="mx-auto mb-2 text-brand-faint opacity-30" />
+                <p className="text-sm text-brand-faint">Las distribuciones aparecerán cuando haya comisiones</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {commissions.slice(0, 5).filter(c => c.growth_fund_amount > 0).map((c) => (
+                  <div key={c.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-brand-hover/40 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 rounded-lg bg-brand-primary/15 flex items-center justify-center shrink-0">
+                        <Zap size={11} className="text-brand-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-brand-text">{c.product_name ?? 'Producto'}</p>
+                        <p className="text-xs text-brand-faint">{fmtDate(c.created_at)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-brand-text">{d.campaign}</p>
-                      <p className="text-xs text-brand-faint">{d.date}</p>
-                    </div>
+                    <span className="text-sm font-bold font-mono gradient-text">+{fmt(c.growth_fund_amount)}</span>
                   </div>
-                  <span className="text-sm font-bold font-mono gradient-text">+{fmt(d.amount)}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

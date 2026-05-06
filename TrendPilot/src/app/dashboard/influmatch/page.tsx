@@ -17,30 +17,6 @@ interface Influencer {
   created_at:       string
 }
 
-// 20 influencers mexicanos mock
-const MOCK_INFLUENCERS: Influencer[] = [
-  { id:'1',  platform:'instagram', handle:'@karla.modamx',       followers:42000,  engagement_rate:'5.2', niche:'moda femenina',      contact_email:'karla@modamx.com',     status:'active',    products_promoted:['Bolsas ecológicas tela'], created_at: new Date(Date.now()-30*86400000).toISOString() },
-  { id:'2',  platform:'tiktok',    handle:'@fitnessmexoficial',   followers:88000,  engagement_rate:'7.1', niche:'fitness y salud',    contact_email:'fit@mex.com',          status:'active',    products_promoted:['Suplementos colágeno','Tapete yoga'], created_at: new Date(Date.now()-25*86400000).toISOString() },
-  { id:'3',  platform:'instagram', handle:'@bellezmx',            followers:31000,  engagement_rate:'4.8', niche:'cosméticos',         contact_email:null,                   status:'contacted', products_promoted:[], created_at: new Date(Date.now()-20*86400000).toISOString() },
-  { id:'4',  platform:'tiktok',    handle:'@techgadgetsmx',       followers:65000,  engagement_rate:'6.3', niche:'tecnología',         contact_email:'tech@gadgetsmx.com',   status:'active',    products_promoted:['Audífonos bluetooth'], created_at: new Date(Date.now()-18*86400000).toISOString() },
-  { id:'5',  platform:'instagram', handle:'@artesaniasoaxaca',    followers:18000,  engagement_rate:'8.9', niche:'artesanías mexicanas',contact_email:'oaxaca@artex.com',     status:'contacted', products_promoted:[], created_at: new Date(Date.now()-15*86400000).toISOString() },
-  { id:'6',  platform:'tiktok',    handle:'@mamasnaturales',      followers:55000,  engagement_rate:'5.7', niche:'maternidad natural',  contact_email:null,                   status:'contacted', products_promoted:[], created_at: new Date(Date.now()-14*86400000).toISOString() },
-  { id:'7',  platform:'instagram', handle:'@yogamx_oficial',      followers:27000,  engagement_rate:'6.5', niche:'yoga y bienestar',   contact_email:'yoga@mxoficial.com',   status:'active',    products_promoted:['Aceite esencial lavanda'], created_at: new Date(Date.now()-12*86400000).toISOString() },
-  { id:'8',  platform:'tiktok',    handle:'@decohogar.mx',        followers:39000,  engagement_rate:'4.2', niche:'decoración hogar',   contact_email:'deco@hogarmx.com',     status:'rejected',  products_promoted:[], created_at: new Date(Date.now()-10*86400000).toISOString() },
-  { id:'9',  platform:'instagram', handle:'@recetasmxfaciles',    followers:72000,  engagement_rate:'5.9', niche:'gastronomía',        contact_email:'recetas@mxfacil.com',  status:'contacted', products_promoted:[], created_at: new Date(Date.now()-9*86400000).toISOString() },
-  { id:'10', platform:'tiktok',    handle:'@moda_sustentable_mx', followers:24000,  engagement_rate:'7.8', niche:'moda sustentable',   contact_email:null,                   status:'active',    products_promoted:['Bolsas ecológicas tela'], created_at: new Date(Date.now()-8*86400000).toISOString() },
-  { id:'11', platform:'instagram', handle:'@viaje_mexico',        followers:95000,  engagement_rate:'3.9', niche:'viajes',             contact_email:'viaje@mx.com',         status:'contacted', products_promoted:[], created_at: new Date(Date.now()-7*86400000).toISOString() },
-  { id:'12', platform:'tiktok',    handle:'@superfinanzasmx',     followers:46000,  engagement_rate:'6.1', niche:'finanzas personales', contact_email:'finanzas@mx.com',      status:'contacted', products_promoted:[], created_at: new Date(Date.now()-6*86400000).toISOString() },
-  { id:'13', platform:'instagram', handle:'@playamxlifestyle',    followers:33000,  engagement_rate:'5.4', niche:'estilo de vida playa',contact_email:null,                   status:'contacted', products_promoted:[], created_at: new Date(Date.now()-5*86400000).toISOString() },
-  { id:'14', platform:'tiktok',    handle:'@petsmx_oficial',      followers:58000,  engagement_rate:'8.2', niche:'mascotas',           contact_email:'pets@mxoficial.com',   status:'active',    products_promoted:['Accesorios mascotas'], created_at: new Date(Date.now()-4*86400000).toISOString() },
-  { id:'15', platform:'instagram', handle:'@emprendedorasmx',     followers:21000,  engagement_rate:'7.3', niche:'emprendimiento femenino',contact_email:'emp@mxmujeres.com', status:'contacted', products_promoted:[], created_at: new Date(Date.now()-3*86400000).toISOString() },
-  { id:'16', platform:'tiktok',    handle:'@skincare.mx',         followers:79000,  engagement_rate:'6.8', niche:'skincare',           contact_email:null,                   status:'active',    products_promoted:['Cremas naturales'], created_at: new Date(Date.now()-3*86400000).toISOString() },
-  { id:'17', platform:'instagram', handle:'@deporteurbano_mx',    followers:29000,  engagement_rate:'5.1', niche:'deporte urbano',     contact_email:'deporte@urbanomx.com', status:'contacted', products_promoted:[], created_at: new Date(Date.now()-2*86400000).toISOString() },
-  { id:'18', platform:'tiktok',    handle:'@foodiesgdl',          followers:43000,  engagement_rate:'7.0', niche:'gastronomía',        contact_email:'foodiesgdl@gmail.com', status:'rejected',  products_promoted:[], created_at: new Date(Date.now()-2*86400000).toISOString() },
-  { id:'19', platform:'instagram', handle:'@joyeraartesanal',     followers:14000,  engagement_rate:'9.4', niche:'joyería artesanal',  contact_email:'joyera@artes.com',     status:'active',    products_promoted:['Aretes plata artesanal'], created_at: new Date(Date.now()-86400000).toISOString() },
-  { id:'20', platform:'tiktok',    handle:'@digitalnomadmx',      followers:37000,  engagement_rate:'5.6', niche:'trabajo remoto',     contact_email:'nomad@mx.com',         status:'contacted', products_promoted:[], created_at: new Date(Date.now()-86400000).toISOString() },
-]
-
 const STATUS_CFG = {
   contacted: { label: 'Contactado', color: 'text-brand-yellow bg-brand-yellow/10'   },
   active:    { label: 'Activo',     color: 'text-brand-green  bg-brand-green/10'    },
@@ -73,13 +49,10 @@ export default function InfluMatchPage() {
       const res = await fetch('/api/influmatch')
       if (res.ok) {
         const json = await res.json()
-        const list = json.data ?? []
-        setInfluencers(list.length > 0 ? list : MOCK_INFLUENCERS)
-      } else {
-        setInfluencers(MOCK_INFLUENCERS)
+        setInfluencers(json.data ?? [])
       }
     } catch {
-      setInfluencers(MOCK_INFLUENCERS)
+      setInfluencers([])
     } finally {
       setLoading(false)
     }
