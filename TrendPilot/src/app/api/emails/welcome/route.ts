@@ -1,11 +1,12 @@
 // POST /api/emails/welcome
 // Envía email de bienvenida a un nuevo operador
 
-import { NextRequest, NextResponse } from 'next/server'
-import { render }                    from '@react-email/render'
-import { resend, FROM_EMAIL, ADMIN_EMAIL } from '@/lib/resend'
-import { WelcomeEmail }              from '@/emails/WelcomeEmail'
-import { logServerError }            from '@/lib/logger'
+import { NextRequest, NextResponse }           from 'next/server'
+import { render }                              from '@react-email/render'
+import * as React                              from 'react'
+import { resend, FROM_EMAIL, ADMIN_EMAIL }     from '@/lib/resend'
+import { WelcomeEmail }                        from '@/emails/WelcomeEmail'
+import { logServerError }                      from '@/lib/logger'
 
 export async function POST(request: NextRequest) {
   let body: { name?: string; email?: string; region?: string } = {}
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const html = await render(
-      WelcomeEmail({ name, email, region }) as React.ReactElement
+      React.createElement(WelcomeEmail, { name, email, region })
     )
 
     const { data, error } = await resend.emails.send({
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[email/welcome] Resend error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 })
     }
 
     console.log('[email/welcome] Enviado a', email, '| id:', data?.id)
@@ -43,6 +44,6 @@ export async function POST(request: NextRequest) {
 
   } catch (err) {
     logServerError(err, 'POST /api/emails/welcome')
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }

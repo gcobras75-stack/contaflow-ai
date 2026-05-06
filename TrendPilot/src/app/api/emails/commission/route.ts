@@ -1,20 +1,21 @@
 // POST /api/emails/commission
 // Notifica al operador y a antonio cuando se registra una comisión
 
-import { NextRequest, NextResponse } from 'next/server'
-import { render }                    from '@react-email/render'
-import { resend, FROM_EMAIL, ADMIN_EMAIL } from '@/lib/resend'
-import { CommissionAlert }           from '@/emails/CommissionAlert'
-import { logServerError }            from '@/lib/logger'
+import { NextRequest, NextResponse }           from 'next/server'
+import { render }                              from '@react-email/render'
+import * as React                              from 'react'
+import { resend, FROM_EMAIL, ADMIN_EMAIL }     from '@/lib/resend'
+import { CommissionAlert }                     from '@/emails/CommissionAlert'
+import { logServerError }                      from '@/lib/logger'
 
 export interface CommissionEmailBody {
-  operatorName:  string
-  operatorEmail: string
-  product:       string
-  saleAmount:    number
+  operatorName:     string
+  operatorEmail:    string
+  product:          string
+  saleAmount:       number
   commissionAmount: number
-  network:       string
-  date:          string
+  network:          string
+  date:             string
 }
 
 export async function POST(request: NextRequest) {
@@ -31,13 +32,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 })
   }
 
-  // Calcular split 70/30
   const operatorShare = parseFloat((commissionAmount * 0.7).toFixed(2))
   const antonioShare  = parseFloat((commissionAmount * 0.3).toFixed(2))
 
   try {
     const html = await render(
-      CommissionAlert({
+      React.createElement(CommissionAlert, {
         operatorName,
         product,
         saleAmount,
@@ -46,10 +46,9 @@ export async function POST(request: NextRequest) {
         antonioShare,
         network,
         date,
-      }) as React.ReactElement
+      })
     )
 
-    // Envío al operador
     const { data, error } = await resend.emails.send({
       from:    FROM_EMAIL,
       to:      operatorEmail,
@@ -60,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[email/commission] Resend error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 })
     }
 
     console.log('[email/commission] Enviado a', operatorEmail, '| id:', data?.id)
@@ -68,6 +67,6 @@ export async function POST(request: NextRequest) {
 
   } catch (err) {
     logServerError(err, 'POST /api/emails/commission')
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }

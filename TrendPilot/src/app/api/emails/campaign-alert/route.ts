@@ -1,15 +1,16 @@
 // POST /api/emails/campaign-alert
 // Envía alerta de campaña con sugerencia IA a antonio
 
-import { NextRequest, NextResponse } from 'next/server'
-import { render }                    from '@react-email/render'
-import { resend, FROM_EMAIL, ADMIN_EMAIL } from '@/lib/resend'
-import { CampaignAlert, CampaignEvent } from '@/emails/CampaignAlert'
-import { logServerError }            from '@/lib/logger'
+import { NextRequest, NextResponse }           from 'next/server'
+import { render }                              from '@react-email/render'
+import * as React                              from 'react'
+import { resend, FROM_EMAIL, ADMIN_EMAIL }     from '@/lib/resend'
+import { CampaignAlert }                       from '@/emails/CampaignAlert'
+import type { CampaignEvent }                  from '@/emails/CampaignAlert'
+import { logServerError }                      from '@/lib/logger'
 
 const VALID_EVENTS: CampaignEvent[] = ['ACTIVADA', 'PAUSADA', 'ROI_BAJO', 'ROI_ALTO', 'SIN_DATOS']
 
-// Genera una sugerencia IA básica si no se provee
 function defaultSuggestion(event: CampaignEvent, roi: number, campaignName: string): string {
   switch (event) {
     case 'ROI_ALTO':
@@ -20,7 +21,6 @@ function defaultSuggestion(event: CampaignEvent, roi: number, campaignName: stri
       return `La campaña fue pausada. Analiza los datos antes de reactivar para identificar áreas de mejora.`
     case 'ACTIVADA':
       return `Campaña activada. Monitorea los primeros resultados en las próximas 24 horas para ajustar si es necesario.`
-    case 'SIN_DATOS':
     default:
       return `La campaña aún no tiene datos suficientes. Espera al menos 24-48 horas para evaluar el rendimiento.`
   }
@@ -36,13 +36,13 @@ const EVENT_SUBJECTS: Record<CampaignEvent, string> = {
 
 export async function POST(request: NextRequest) {
   let body: {
-    campaignName?: string
-    event?:        string
-    spend?:        number
-    commissions?:  number
-    roi?:          number
-    suggestion?:   string
-    recipientEmail?: string
+    campaignName?:    string
+    event?:           string
+    spend?:           number
+    commissions?:     number
+    roi?:             number
+    suggestion?:      string
+    recipientEmail?:  string
   } = {}
 
   try {
@@ -66,22 +66,21 @@ export async function POST(request: NextRequest) {
   }
 
   const event = (VALID_EVENTS.includes(rawEvent as CampaignEvent)
-    ? rawEvent
-    : 'SIN_DATOS') as CampaignEvent
+    ? rawEvent : 'SIN_DATOS') as CampaignEvent
 
   const finalSuggestion = suggestion || defaultSuggestion(event, roi, campaignName)
   const to = recipientEmail ?? ADMIN_EMAIL
 
   try {
     const html = await render(
-      CampaignAlert({
+      React.createElement(CampaignAlert, {
         campaignName,
         event,
         spend,
         commissions,
         roi,
         suggestion: finalSuggestion,
-      }) as React.ReactElement
+      })
     )
 
     const { data, error } = await resend.emails.send({
@@ -93,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[email/campaign-alert] Resend error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: (error as { message: string }).message }, { status: 500 })
     }
 
     console.log('[email/campaign-alert] Enviado | event:', event, '| id:', data?.id)
@@ -101,6 +100,6 @@ export async function POST(request: NextRequest) {
 
   } catch (err) {
     logServerError(err, 'POST /api/emails/campaign-alert')
-    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+    return NextResponse.json({ error: String(err) }, { status: 500 })
   }
 }
