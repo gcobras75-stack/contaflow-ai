@@ -129,10 +129,12 @@ export default function DashboardPage() {
           budget_spent:    (c.budget_spent as number) ?? 0,
           sales_generated: (c.sales_generated as number) ?? 0,
         })))
+        const paused = data.filter(c => c.semaphore_color === 'red' || c.semaphore_color === 'paused').length
         setStats(s => ({
           ...s,
-          active_campaigns: campaignRes.value.total ?? data.length,
-          growth_fund:      data.reduce((sum, c) => sum + ((c.budget_fund as number) ?? 0), 0),
+          active_campaigns:  data.filter(c => c.semaphore_color === 'green' || c.semaphore_color === 'yellow').length,
+          pending_approvals: paused,
+          growth_fund:       data.reduce((sum, c) => sum + ((c.budget_fund as number) ?? 0), 0),
         }))
       }
 

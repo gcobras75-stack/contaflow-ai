@@ -5,7 +5,7 @@ import { Zap, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/utils'
 import {
-  MOCK_EARLY_SIGNALS, SIGNAL_LABELS, detectEarlySignals,
+  SIGNAL_LABELS, detectEarlySignals,
   type EarlySignalOpportunity, type RawTrend,
 } from '@/lib/earlysignal'
 
@@ -23,7 +23,7 @@ export function EarlySignalWidget() {
     fetch('/api/trends?limit=50')
       .then((r) => r.ok ? r.json() : null)
       .then((json) => {
-        if (!json) { setSignals(MOCK_EARLY_SIGNALS); return }
+        if (!json) return
         const rawTrends: RawTrend[] = (json.data ?? []).map((t: Record<string, unknown>) => ({
           keyword:         t.keyword,
           trend_score:     t.trend_score,
@@ -35,10 +35,9 @@ export function EarlySignalWidget() {
         const seenKw = new Map<string, RawTrend>()
         for (const t of rawTrends) { const k = String(t.keyword).toLowerCase(); if (!seenKw.has(k)) seenKw.set(k, t) }
         const uniqueTrends = Array.from(seenKw.values())
-        const detected = detectEarlySignals(uniqueTrends)
-        setSignals(detected.length > 0 ? detected : MOCK_EARLY_SIGNALS)
+        setSignals(detectEarlySignals(uniqueTrends))
       })
-      .catch(() => setSignals(MOCK_EARLY_SIGNALS))
+      .catch(() => {/* silencioso — estado vacío se muestra */})
       .finally(() => setLoading(false))
   }, [])
 
