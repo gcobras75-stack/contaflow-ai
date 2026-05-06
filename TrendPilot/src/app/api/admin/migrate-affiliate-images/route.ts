@@ -113,33 +113,25 @@ export async function POST(request: NextRequest) {
   } catch (e) { results.push(`CREATE error: ${String(e)}`) }
 
   // ── 3. ALTER TABLE: agregar columnas faltantes ────────────────────────────
+  // Usamos sql`` tagged literals directamente — DDL sin interpolaciones es SQL estático
   if (alter) {
-    const alterCols: [string, string][] = [
-      ['name',              'TEXT'],
-      ['slug',              'TEXT'],
-      ['product_price',     'NUMERIC DEFAULT 0'],
-      ['commission_rate',   'NUMERIC DEFAULT 6'],
-      ['affiliate_network', "TEXT DEFAULT 'mercadolibre'"],
-      ['meta_campaign_id',  'TEXT'],
-      ['meta_spend',        'NUMERIC DEFAULT 0'],
-      ['meta_clicks',       'INTEGER DEFAULT 0'],
-      ['meta_impressions',  'INTEGER DEFAULT 0'],
-      ['total_conversions', 'INTEGER DEFAULT 0'],
-      ['total_commissions', 'NUMERIC DEFAULT 0'],
-    ]
-
-    for (const [col, type] of alterCols) {
-      try {
-        await sql.unsafe(`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS ${col} ${type}`)
-        results.push(`  ✓ Columna ${col} lista`)
-      } catch (e) { results.push(`  ALTER ${col} error: ${String(e)}`) }
+    const addCol = async (label: string, ddl: () => Promise<unknown>) => {
+      try { await ddl(); results.push(`  ✓ ${label}`) }
+      catch (e) { results.push(`  ~ ${label}: ${String(e).slice(0, 80)}`) }
     }
 
-    // Agregar índice único en slug (si no existe)
-    try {
-      await sql`CREATE UNIQUE INDEX IF NOT EXISTS affiliate_campaigns_slug_idx ON affiliate_campaigns(slug) WHERE slug IS NOT NULL`
-      results.push('  ✓ Índice único en slug')
-    } catch (e) { results.push(`  INDEX slug error: ${String(e)}`) }
+    await addCol('name',              () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS "name" TEXT`)
+    await addCol('slug',              () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS slug TEXT`)
+    await addCol('product_price',     () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS product_price NUMERIC DEFAULT 0`)
+    await addCol('commission_rate',   () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS commission_rate NUMERIC DEFAULT 0`)
+    await addCol('affiliate_network', () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS affiliate_network TEXT`)
+    await addCol('meta_campaign_id',  () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS meta_campaign_id TEXT`)
+    await addCol('meta_spend',        () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS meta_spend NUMERIC DEFAULT 0`)
+    await addCol('meta_clicks',       () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS meta_clicks INTEGER DEFAULT 0`)
+    await addCol('meta_impressions',  () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS meta_impressions INTEGER DEFAULT 0`)
+    await addCol('total_conversions', () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS total_conversions INTEGER DEFAULT 0`)
+    await addCol('total_commissions', () => sql`ALTER TABLE affiliate_campaigns ADD COLUMN IF NOT EXISTS total_commissions NUMERIC DEFAULT 0`)
+    await addCol('slug_index',        () => sql`CREATE UNIQUE INDEX IF NOT EXISTS affiliate_campaigns_slug_idx ON affiliate_campaigns(slug) WHERE slug IS NOT NULL`)
   }
 
   // ── 4. Insertar / actualizar campañas ─────────────────────────────────────
@@ -185,7 +177,7 @@ export async function POST(request: NextRequest) {
             await sql`
               UPDATE affiliate_campaigns
               SET
-                name              = COALESCE(name, ${c.product_name}),
+                "name"            = COALESCE("name", ${c.product_name}),
                 slug              = COALESCE(slug, ${c.slug}),
                 product_price     = CASE WHEN product_price IS NULL OR product_price = 0
                                          THEN ${c.product_price}::numeric ELSE product_price END,

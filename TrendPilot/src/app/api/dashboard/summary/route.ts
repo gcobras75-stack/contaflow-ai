@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       sql`
         SELECT
           id,
-          COALESCE(name, product_name) AS name,
+          COALESCE("name", product_name) AS name,
           slug, status, image_url,
           COALESCE(product_price, 0)    AS product_price,
           COALESCE(commission_rate, 6)  AS commission_rate,
