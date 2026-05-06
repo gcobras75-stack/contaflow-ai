@@ -10,6 +10,7 @@ import { Resend }  from 'resend'
 import * as dotenv from 'dotenv'
 import * as path   from 'path'
 import * as fs     from 'fs'
+import { pathToFileURL } from 'url'
 
 // ── 1. Cargar .env.local ──────────────────────────────────────────────────────
 const envPath = path.resolve(process.cwd(), '.env.local')
@@ -37,7 +38,8 @@ try {
 
 // ── 3. Test render de cada template ──────────────────────────────────────────
 const FROM  = 'TrendPilot <onboarding@resend.dev>'
-const TO    = 'antonio@automatia.mx'
+// Sin dominio verificado Resend solo permite enviar al email del dueño de la cuenta
+const TO    = 'gcobras75@gmail.com'
 const tests: Array<{ name: string; ok: boolean; len?: number; error?: string; emailId?: string }> = []
 
 async function testTemplate(
@@ -69,7 +71,7 @@ async function testTemplate(
 }
 
 // ── 4. Import dinámico de templates (resuelve @/ alias manualmente) ───────────
-const src = (p: string) => path.resolve(process.cwd(), 'src', p)
+const src = (p: string) => pathToFileURL(path.resolve(process.cwd(), 'src', p)).href
 
 const { WelcomeEmail }    = await import(src('emails/WelcomeEmail.tsx'))
 const { CommissionAlert } = await import(src('emails/CommissionAlert.tsx'))

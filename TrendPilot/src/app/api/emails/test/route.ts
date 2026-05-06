@@ -33,8 +33,14 @@ export async function GET() {
     ? 'TrendPilot <noreply@trendpilot.marketing>'
     : 'TrendPilot <onboarding@resend.dev>'
 
+  // Sin dominio verificado Resend solo permite enviar al email del dueño de la cuenta.
+  // Con dominio verificado (RESEND_DOMAIN_VERIFIED=true) se envía a antonio@automatia.mx.
+  const testTo = process.env.RESEND_DOMAIN_VERIFIED === 'true'
+    ? ADMIN_EMAIL
+    : (process.env.RESEND_TEST_EMAIL ?? 'gcobras75@gmail.com')
+
   const sendEmail = async (subject: string, html: string) => {
-    return resend.emails.send({ from: FROM_EMAIL_val, to: ADMIN_EMAIL, subject, html })
+    return resend.emails.send({ from: FROM_EMAIL_val, to: testTo, subject, html })
   }
 
   // 1. WelcomeEmail
@@ -128,7 +134,7 @@ export async function GET() {
 
   return NextResponse.json({
     allOk,
-    to:      ADMIN_EMAIL,
+    to:      testTo,
     from:    FROM_EMAIL_val,
     results,
   })
