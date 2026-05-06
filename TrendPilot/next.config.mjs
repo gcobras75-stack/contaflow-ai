@@ -68,6 +68,14 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '*.mlstatic.com' },
+      { protocol: 'https', hostname: 'http.mlstatic.com' },
+    ],
+  },
+
   async headers() {
     return [
       // Aplicar headers de seguridad a TODAS las rutas

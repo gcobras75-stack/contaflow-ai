@@ -27,10 +27,17 @@ export async function GET(request: NextRequest) {
       // Campañas afiliadas con métricas
       sql`
         SELECT
-          id, name, slug, status, image_url,
-          product_price, commission_rate, affiliate_network, affiliate_url,
-          meta_spend, meta_clicks, meta_impressions,
-          total_conversions, total_commissions
+          id,
+          COALESCE(name, product_name) AS name,
+          slug, status, image_url,
+          COALESCE(product_price, 0)    AS product_price,
+          COALESCE(commission_rate, 6)  AS commission_rate,
+          affiliate_network, affiliate_url,
+          COALESCE(meta_spend, spend_total_mxn, 0)       AS meta_spend,
+          COALESCE(meta_clicks, clicks, 0)                AS meta_clicks,
+          COALESCE(meta_impressions, 0)                   AS meta_impressions,
+          COALESCE(total_conversions, conversions, 0)     AS total_conversions,
+          COALESCE(total_commissions, commission_earned, 0) AS total_commissions
         FROM affiliate_campaigns
         ORDER BY created_at DESC
         LIMIT 20
