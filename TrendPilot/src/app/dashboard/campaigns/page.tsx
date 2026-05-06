@@ -22,24 +22,25 @@ export default function CampaignsPage() {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch('/api/campaigns?limit=100')
+        // Fuente primaria: affiliate_campaigns (campañas reales de afiliado)
+        const res = await fetch('/api/affiliate/campaigns')
         if (!res.ok) throw new Error()
         const json = await res.json()
         if (json.data && json.data.length > 0) {
           setCampaigns(json.data.map((c: Record<string, unknown>) => ({
-            id:                 c.id,
-            product_name:       (c.name as string | undefined) ?? (c.products as { name?: string })?.name ?? 'Producto',
-            vendor_name:        (c.vendors  as { name?: string })?.name ?? 'Vendor',
-            platform:           c.platform,
+            id:                 String(c.id),
+            product_name:       String(c.product_name ?? c.name ?? 'Producto'),
+            vendor_name:        String(c.vendor_name ?? 'Super Afiliado'),
+            platform:           String(c.platform ?? 'meta'),
             semaphore_color:    (c.semaphore_color as SemColor) ?? 'yellow',
-            budget_total:       c.budget_total       ?? 0,
-            budget_spent:       c.budget_spent        ?? 0,
-            sales_generated:    c.sales_generated     ?? 0,
-            commissions_earned: c.commissions_earned  ?? 0,
+            budget_total:       Number(c.budget_total       ?? 0),
+            budget_spent:       Number(c.budget_spent        ?? 0),
+            sales_generated:    Number(c.sales_generated     ?? 0),
+            commissions_earned: Number(c.commissions_earned  ?? 0),
             pause_reason:       c.pause_reason as string | undefined,
             ai_suggestions:     c.ai_suggestions as Record<string, unknown> | undefined,
-            product_image:      (c.products as { images?: string[] })?.images?.[0] ?? null,
-            created_at:         c.created_at,
+            product_image:      (c.product_image as string | null) ?? null,
+            created_at:         String(c.created_at ?? ''),
           })))
         }
       } catch { /* mantener vacío */ }

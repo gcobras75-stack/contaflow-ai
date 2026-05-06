@@ -347,7 +347,7 @@ export default function DashboardPage() {
                         {roi > 0 ? '+' : ''}{roi}%
                       </span>
                     ) : (
-                      <span className="text-xs text-brand-faint font-mono">Iniciando...</span>
+                      <span className="text-xs text-brand-yellow font-mono">⏳ Esperando Meta</span>
                     )}
                   </div>
                 )

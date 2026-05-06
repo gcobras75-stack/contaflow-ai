@@ -40,8 +40,8 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Fuentes: propio + Google Fonts CDN
       "font-src 'self' https://fonts.gstatic.com",
-      // Imágenes: propio + data URIs + blobs + CDN de MercadoLibre
-      "img-src 'self' data: blob: https://*.mlstatic.com https://http.mlstatic.com",
+      // Imágenes: propio + data URIs + blobs + CDN de MercadoLibre + Unsplash
+      "img-src 'self' data: blob: https://*.mlstatic.com https://http.mlstatic.com https://images.unsplash.com",
       // Conexiones API: solo servicios que realmente usamos
       [
         "connect-src 'self'",

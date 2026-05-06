@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useEffect, useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import {
@@ -80,13 +80,14 @@ const VARIANT_STATUS = {
   eliminated:{ label: 'ELIMINADA',  color: 'text-brand-faint  bg-brand-hover     border-brand-border'     },
 }
 
-export default function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function CampaignDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
 
   const [campaign, setCampaign]   = useState<Record<string, unknown> | null>(null)
   const [creatives, setCreatives] = useState<Record<string, unknown>[]>([])
   const [loading, setLoading]     = useState(true)
+  const [notFound, setNotFound]   = useState(false)
   const [dailyData]               = useState(generateMockDailyData(14))
   const [isPending, startTrans]   = useTransition()
   const [actionMsg, setActionMsg] = useState<string | null>(null)
@@ -96,13 +97,22 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     async function load() {
       setLoading(true)
       try {
-        const [cRes, adRes] = await Promise.all([
-          fetch(`/api/campaigns/${id}`),
+        const [affRes, adRes] = await Promise.all([
+          fetch(`/api/affiliate/campaigns/${id}`),
           fetch(`/api/ad-creatives?campaign_id=${id}`),
         ])
-        if (cRes.ok) { const { data } = await cRes.json(); setCampaign(data) }
+        if (affRes.ok) {
+          const { data } = await affRes.json()
+          setCampaign(data)
+        } else {
+          // Fallback: tabla campaigns estándar
+          const cRes = await fetch(`/api/campaigns/${id}`)
+          if (cRes.status === 404) { setNotFound(true) }
+          else if (cRes.ok) { const { data } = await cRes.json(); setCampaign(data) }
+          else { setNotFound(true) }
+        }
         if (adRes.ok) { const { data } = await adRes.json(); setCreatives(data ?? []) }
-      } catch { /* usa mock */ } finally { setLoading(false) }
+      } catch { /* silencioso */ } finally { setLoading(false) }
     }
     load()
   }, [id])
@@ -143,22 +153,48 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
     )
   }
 
+  if (notFound) {
+    return (
+      <div className="max-w-md mx-auto text-center py-20 space-y-4">
+        <div className="w-16 h-16 rounded-2xl bg-brand-card border border-brand-border flex items-center justify-center mx-auto">
+          <Radio size={24} className="text-brand-faint" />
+        </div>
+        <h1 className="text-lg font-bold text-brand-text">Esta campaña no existe o fue eliminada</h1>
+        <p className="text-sm text-brand-muted">
+          Es posible que la campaña haya sido eliminada o que el enlace sea incorrecto.
+        </p>
+        <button
+          onClick={() => router.push('/dashboard/campaigns')}
+          className="inline-flex items-center gap-2 px-5 py-2.5 btn-gradient text-white rounded-xl text-sm font-semibold"
+        >
+          <ArrowLeft size={14} /> Volver a campañas
+        </button>
+      </div>
+    )
+  }
+
   const sem  = (campaign?.semaphore_color as keyof typeof semConfig) ?? 'yellow'
   const cfg  = semConfig[sem] ?? semConfig.yellow
   const Icon = cfg.icon
 
-  const budgetTotal    = Number(campaign?.budget_total  ?? 500000)
-  const budgetSpent    = Number(campaign?.budget_spent  ?? 210000)
-  const salesGenerated = Number(campaign?.sales_generated ?? 1800000)
-  const commissions    = Number(campaign?.commissions_earned ?? 360000)
+  const budgetTotal    = Number(campaign?.budget_total       ?? 0)
+  const budgetSpent    = Number(campaign?.budget_spent        ?? 0)
+  const salesGenerated = Number(campaign?.sales_generated     ?? 0)
+  const commissions    = Number(campaign?.commissions_earned  ?? 0)
   const roi            = budgetSpent > 0 ? Math.round(((salesGenerated - budgetSpent) / budgetSpent) * 100) : 0
   const growthFund     = Math.round(commissions * 0.4)
   const platformEarning = commissions - growthFund
-  const spendPct       = Math.min(100, Math.round((budgetSpent / budgetTotal) * 100))
+  const spendPct       = budgetTotal > 0 ? Math.min(100, Math.round((budgetSpent / budgetTotal) * 100)) : 0
 
-  const productName = (campaign?.products as { name?: string })?.name ?? 'Audífonos Bluetooth Pro'
-  const vendorName  = (campaign?.vendors  as { name?: string })?.name ?? 'TechStore MX'
-  const platform    = String(campaign?.platform ?? 'meta')
+  const productName = (campaign?.name as string | undefined)
+                   ?? (campaign?.product_name as string | undefined)
+                   ?? (campaign?.products as { name?: string })?.name
+                   ?? 'Producto'
+  const vendorName  = (campaign?.vendor_name as string | undefined)
+                   ?? (campaign?.vendors as { name?: string })?.name
+                   ?? '—'
+  const platform       = String(campaign?.platform ?? 'meta')
+  const productImageUrl = (campaign?.image_url as string | null) ?? null
 
   // SplitTest & ReachBack — mock basado en datos de campaña
   const abVariants = buildMockVariants(productName)
@@ -192,7 +228,7 @@ export default function CampaignDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Hero imagen del producto */}
       <div className="relative h-[200px] rounded-2xl overflow-hidden">
-        <ProductImage keyword={productName} size="hero" />
+        <ProductImage keyword={productName} src={productImageUrl} size="hero" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <p className="text-white font-bold text-lg leading-tight drop-shadow">{productName}</p>
