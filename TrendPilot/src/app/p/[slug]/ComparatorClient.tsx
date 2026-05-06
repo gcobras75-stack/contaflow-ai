@@ -13,6 +13,8 @@ import type { ComparatorProduct, ProductOption } from '@/lib/comparator-data'
 function platformColor(p: string) {
   if (p === 'mercadolibre') return { bg: 'bg-yellow-400/15', text: 'text-yellow-400', border: 'border-yellow-400/30' }
   if (p === 'amazon')       return { bg: 'bg-orange-400/15', text: 'text-orange-400', border: 'border-orange-400/30' }
+  if (p === 'shein')        return { bg: 'bg-pink-400/15',   text: 'text-pink-400',   border: 'border-pink-400/30' }
+  if (p === 'temu')         return { bg: 'bg-red-400/15',    text: 'text-red-400',    border: 'border-red-400/30' }
   return                           { bg: 'bg-purple-400/15', text: 'text-purple-400', border: 'border-purple-400/30' }
 }
 

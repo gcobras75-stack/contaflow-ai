@@ -4,7 +4,7 @@
 export interface ProductOption {
   id:               string
   name:             string
-  platform:         'mercadolibre' | 'amazon' | 'shopify'
+  platform:         'mercadolibre' | 'amazon' | 'shopify' | 'shein' | 'temu'
   platform_label:   string
   price:            number         // MXN
   original_price?:  number
