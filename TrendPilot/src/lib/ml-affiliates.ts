@@ -88,56 +88,31 @@ export async function getAffiliateCommissionSummary(opts: {
       since = new Date(now.getFullYear(), now.getMonth(), 1)
   }
 
-  const networkFilter = opts.network ? `AND network = '${opts.network}'` : ''
-  const statusFilter  = opts.status  ? `AND status  = '${opts.status}'`  : ''
+  // Queries separadas por combinación de filtros — evita sql.unsafe
+  const network = opts.network ?? null
+  const status  = opts.status  ?? null
 
-  const rows = await sql`
-    SELECT
-      network,
-      status,
-      COUNT(*)::int                         AS count,
-      COALESCE(SUM(commission_amount), 0)   AS commission_total,
-      COALESCE(SUM(operator_share),    0)   AS operator_total,
-      COALESCE(SUM(antonio_share),     0)   AS antonio_total
-    FROM affiliate_commissions
-    WHERE created_at >= ${since.toISOString()}
-    ${sql.unsafe(networkFilter)}
-    ${sql.unsafe(statusFilter)}
-    GROUP BY network, status
-  ` as Array<{
-    network: string; status: string; count: number
-    commission_total: string; operator_total: string; antonio_total: string
-  }>
+  const rows = network && status
+    ? await sql`SELECT network, status, COUNT(*)::int AS count, COALESCE(SUM(commission_amount),0) AS commission_total, COALESCE(SUM(operator_share),0) AS operator_total, COALESCE(SUM(antonio_share),0) AS antonio_total FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND network = ${network} AND status = ${status} GROUP BY network, status` as Array<{ network: string; status: string; count: number; commission_total: string; operator_total: string; antonio_total: string }>
+    : network
+    ? await sql`SELECT network, status, COUNT(*)::int AS count, COALESCE(SUM(commission_amount),0) AS commission_total, COALESCE(SUM(operator_share),0) AS operator_total, COALESCE(SUM(antonio_share),0) AS antonio_total FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND network = ${network} GROUP BY network, status` as Array<{ network: string; status: string; count: number; commission_total: string; operator_total: string; antonio_total: string }>
+    : status
+    ? await sql`SELECT network, status, COUNT(*)::int AS count, COALESCE(SUM(commission_amount),0) AS commission_total, COALESCE(SUM(operator_share),0) AS operator_total, COALESCE(SUM(antonio_share),0) AS antonio_total FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND status = ${status} GROUP BY network, status` as Array<{ network: string; status: string; count: number; commission_total: string; operator_total: string; antonio_total: string }>
+    : await sql`SELECT network, status, COUNT(*)::int AS count, COALESCE(SUM(commission_amount),0) AS commission_total, COALESCE(SUM(operator_share),0) AS operator_total, COALESCE(SUM(antonio_share),0) AS antonio_total FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} GROUP BY network, status` as Array<{ network: string; status: string; count: number; commission_total: string; operator_total: string; antonio_total: string }>
 
   // Totales globales
-  const totalRows = await sql`
-    SELECT
-      COALESCE(SUM(commission_amount), 0) AS total,
-      COALESCE(SUM(CASE WHEN status = 'approved' OR status = 'paid'
-        THEN commission_amount ELSE 0 END), 0) AS approved,
-      COALESCE(SUM(CASE WHEN status = 'pending'
-        THEN commission_amount ELSE 0 END), 0) AS pending,
-      COALESCE(SUM(operator_share), 0)    AS operator_total,
-      COALESCE(SUM(antonio_share),  0)    AS antonio_total
-    FROM affiliate_commissions
-    WHERE created_at >= ${since.toISOString()}
-    ${sql.unsafe(networkFilter)}
-  ` as Array<{
-    total: string; approved: string; pending: string
-    operator_total: string; antonio_total: string
-  }>
+  const totalRows = network
+    ? await sql`SELECT COALESCE(SUM(commission_amount),0) AS total, COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN commission_amount ELSE 0 END),0) AS approved, COALESCE(SUM(CASE WHEN status='pending' THEN commission_amount ELSE 0 END),0) AS pending, COALESCE(SUM(operator_share),0) AS operator_total, COALESCE(SUM(antonio_share),0) AS antonio_total FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND network = ${network}` as Array<{ total: string; approved: string; pending: string; operator_total: string; antonio_total: string }>
+    : await sql`SELECT COALESCE(SUM(commission_amount),0) AS total, COALESCE(SUM(CASE WHEN status IN ('approved','paid') THEN commission_amount ELSE 0 END),0) AS approved, COALESCE(SUM(CASE WHEN status='pending' THEN commission_amount ELSE 0 END),0) AS pending, COALESCE(SUM(operator_share),0) AS operator_total, COALESCE(SUM(antonio_share),0) AS antonio_total FROM affiliate_commissions WHERE created_at >= ${since.toISOString()}` as Array<{ total: string; approved: string; pending: string; operator_total: string; antonio_total: string }>
 
   // Últimas 10 comisiones
-  const recent = await sql`
-    SELECT id, network, product_name, sale_amount, commission_amount,
-           operator_share, antonio_share, status, sale_date, created_at
-    FROM affiliate_commissions
-    WHERE created_at >= ${since.toISOString()}
-    ${sql.unsafe(networkFilter)}
-    ${sql.unsafe(statusFilter)}
-    ORDER BY created_at DESC
-    LIMIT 10
-  `
+  const recent = network && status
+    ? await sql`SELECT id, network, product_name, sale_amount, commission_amount, operator_share, antonio_share, status, sale_date, created_at FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND network = ${network} AND status = ${status} ORDER BY created_at DESC LIMIT 10`
+    : network
+    ? await sql`SELECT id, network, product_name, sale_amount, commission_amount, operator_share, antonio_share, status, sale_date, created_at FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND network = ${network} ORDER BY created_at DESC LIMIT 10`
+    : status
+    ? await sql`SELECT id, network, product_name, sale_amount, commission_amount, operator_share, antonio_share, status, sale_date, created_at FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} AND status = ${status} ORDER BY created_at DESC LIMIT 10`
+    : await sql`SELECT id, network, product_name, sale_amount, commission_amount, operator_share, antonio_share, status, sale_date, created_at FROM affiliate_commissions WHERE created_at >= ${since.toISOString()} ORDER BY created_at DESC LIMIT 10`
 
   // Agrupar por red
   const byNetwork: Record<string, number> = {}

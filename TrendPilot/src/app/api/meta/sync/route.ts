@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Obtener todas las campañas con meta_campaign_id configurado
     const campaigns = await sql`
-      SELECT id, COALESCE(name, product_name) AS name, meta_campaign_id
+      SELECT id, COALESCE("name", product_name) AS name, meta_campaign_id
       FROM affiliate_campaigns
       WHERE meta_campaign_id IS NOT NULL
         AND meta_campaign_id != ''

@@ -56,7 +56,7 @@ export async function createProductAction(
     })
 
     // Trigger async scoring — vía API (fire-and-forget)
-    fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/api/products/${product.id}/score`, {
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.trendpilot.marketing'}/api/products/${product.id}/score`, {
       method: 'POST',
     }).catch(() => {/* silencioso */})
   } catch (error) {

@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
     temu:         10,
     aliexpress:   8,
   }
-  const commissionRate = parseFloat(p.get('commission_rate') ?? String(DEFAULT_RATES[network] ?? 6))
+  const commissionRate = Math.max(0.5, Math.min(50, parseFloat(p.get('commission_rate') ?? String(DEFAULT_RATES[network] ?? 6))))
 
   try {
     const result = await recordCommission({
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
     }
 
     const DEFAULT_RATES: Record<string, number> = { shein: 20, temu: 10, aliexpress: 8 }
-    const commissionRate = parseFloat(String(body.commission_rate ?? DEFAULT_RATES[network] ?? 10))
+    const commissionRate = Math.max(0.5, Math.min(50, parseFloat(String(body.commission_rate ?? DEFAULT_RATES[network] ?? 10))))
 
     const saleDate = body.action_date
       ? new Date(String(body.action_date))
