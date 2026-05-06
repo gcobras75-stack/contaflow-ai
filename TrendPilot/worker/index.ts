@@ -807,11 +807,47 @@ cron.schedule('0 */2 * * *', syncSupermetrics, { timezone: 'America/Mexico_City'
 // Cada día a las 8:05am — reporte diario WhatsApp a Antonio
 cron.schedule('5 8 * * *', dailyWhatsAppReport, { timezone: 'America/Mexico_City' })
 
+// ─── CRON 10 — Cada 15 minutos: sincronizar métricas Meta Ads → Neon ──────────
+//
+// Jala spend, clicks, impresiones y conversiones reales de Meta Marketing API
+// y los guarda en affiliate_campaigns para que el dashboard muestre datos reales.
+
+async function syncMetaAds() {
+  log('INFO', 'Sincronizando Meta Ads…')
+  try {
+    const res = await apiPost('/api/meta/sync', {})
+    log('INFO', `Meta Ads sync: ${res.synced ?? 0}/${res.total ?? 0} campañas actualizadas`)
+  } catch (err) {
+    log('WARN', 'Error en syncMetaAds', err)
+  }
+}
+
+// ─── CRON 11 — Cada hora: refrescar tendencias con Google Trends + Claude ─────
+//
+// Obtiene tendencias reales de México vía Google Trends y las analiza con Claude
+// para detectar oportunidades de productos afiliados (ML y SHEIN).
+
+async function refreshTrends() {
+  log('INFO', 'Refrescando Google Trends + análisis Claude…')
+  try {
+    const res = await apiPost('/api/trends/refresh', {})
+    log('INFO', `Trends refresh: ${res.trending_count ?? 0} tendencias, ${res.opportunities ?? 0} oportunidades`)
+  } catch (err) {
+    log('WARN', 'Error en refreshTrends', err)
+  }
+}
+
+// Cada 15 minutos — sincronizar Meta Ads
+cron.schedule('*/15 * * * *', syncMetaAds, { timezone: 'America/Mexico_City' })
+
+// Cada hora — refrescar tendencias Google + Claude
+cron.schedule('0 * * * *', refreshTrends, { timezone: 'America/Mexico_City' })
+
 // ─── Arranque ─────────────────────────────────────────────────────────────────
 
 log('INFO', '🚀 TrendPilot Worker iniciado')
 log('INFO', `APP_URL: ${APP_URL}`)
-log('INFO', 'Crons: [6am] reachback | [7am] seasons | [7:30am] leadfinder | [1h] semáforo | [2h] supermetrics | [6h] tendencias | [8am] comisiones | [8:05am] WA report | [9am] trust | [10am] growthfund | [lun 8am] reporte WA')
+log('INFO', 'Crons: [*/15] meta-sync | [1h] trends-refresh | [6am] reachback | [7am] seasons | [7:30am] leadfinder | [1h] semáforo | [2h] supermetrics | [6h] tendencias | [8am] comisiones | [8:05am] WA report | [9am] trust | [10am] growthfund | [lun 8am] reporte WA')
 
 // Ejecutar inmediatamente al arrancar
 evaluateSemaphore().catch((err) => log('ERROR', 'Error en arranque evaluateSemaphore', err))

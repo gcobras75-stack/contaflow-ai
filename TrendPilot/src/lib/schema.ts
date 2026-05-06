@@ -1,6 +1,6 @@
 import {
   pgTable, pgEnum, uuid, text, integer, numeric,
-  boolean, timestamp, jsonb, index,
+  boolean, timestamp, jsonb, index, serial,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
@@ -389,6 +389,33 @@ export const reachbackConfigRelations = relations(reachbackConfigs, ({ one }) =>
 export const leadRelations = relations(leads, ({ one }) => ({
   vendor: one(vendors, { fields: [leads.vendor_id], references: [vendors.id] }),
 }))
+
+// ─── affiliate_commissions (comisiones de redes afiliadas: ML, SHEIN, etc.) ──
+
+export const affiliateCommissions = pgTable('affiliate_commissions', {
+  id:                serial('id').primaryKey(),
+  campaign_id:       integer('campaign_id'),       // referencia a affiliate_campaigns.id (raw SQL)
+  network:           text('network').notNull(),     // mercadolibre | shein | temu | aliexpress
+  transaction_id:    text('transaction_id').unique(),
+  product_name:      text('product_name'),
+  sale_amount:       numeric('sale_amount', { precision: 10, scale: 2 }).default('0'),
+  commission_rate:   numeric('commission_rate', { precision: 5, scale: 2 }).default('0'),
+  commission_amount: numeric('commission_amount', { precision: 10, scale: 2 }).default('0'),
+  status:            text('status').notNull().default('pending'), // pending | approved | rejected | paid
+  click_date:        timestamp('click_date'),
+  sale_date:         timestamp('sale_date'),
+  approval_date:     timestamp('approval_date'),
+  region:            text('region'),
+  operator_share:    numeric('operator_share', { precision: 10, scale: 2 }).default('0'),  // 70%
+  antonio_share:     numeric('antonio_share', { precision: 10, scale: 2 }).default('0'),   // 30%
+  raw_data:          jsonb('raw_data').$type<Record<string, unknown>>(),
+  created_at:        timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('aff_comm_network_idx').on(t.network),
+  index('aff_comm_status_idx').on(t.status),
+  index('aff_comm_sale_date_idx').on(t.sale_date),
+  index('aff_comm_campaign_idx').on(t.campaign_id),
+])
 
 // ─── affiliate_clicks (comparador público /p/[slug]) ─────────────────────────
 

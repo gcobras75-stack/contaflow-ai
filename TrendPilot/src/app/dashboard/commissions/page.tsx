@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import dynamic                          from 'next/dynamic'
+import Link                             from 'next/link'
 import {
   Coins, Download, Filter, TrendingUp, Zap,
-  BarChart2, Sliders, ChevronRight,
+  BarChart2, Sliders, ChevronRight, Plus, Globe,
 } from 'lucide-react'
 import { cn } from '@/utils'
 
@@ -35,7 +36,20 @@ interface Commission {
   vendor_name?:        string
 }
 
-type Tab = 'commissions' | 'growthfund' | 'projections'
+type Tab = 'commissions' | 'affiliates' | 'growthfund' | 'projections'
+
+interface AffCommission {
+  id:                number
+  network:           string
+  product_name:      string | null
+  sale_amount:       string
+  commission_amount: string
+  operator_share:    string
+  antonio_share:     string
+  status:            string
+  sale_date:         string | null
+  created_at:        string
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,6 +111,8 @@ function buildProjections(monthlySalesCents: number, rate = 0.20) {
 
 export default function CommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([])
+  const [affComms, setAffComms]       = useState<AffCommission[]>([])
+  const [affSummary, setAffSummary]   = useState({ total: 0, approved: 0, pending: 0, operator: 0, antonio: 0 })
   const [loading, setLoading]         = useState(true)
   const [activeTab, setActiveTab]     = useState<Tab>('commissions')
   const [statusFilter, setStatus]     = useState<'all' | 'paid' | 'pending'>('all')
@@ -109,10 +125,21 @@ export default function CommissionsPage() {
     async function load() {
       setLoading(true)
       try {
-        const res = await fetch('/api/commissions?limit=100')
-        if (res.ok) {
-          const json = await res.json()
-          setCommissions(json.data ?? [])
+        const [commRes, affRes] = await Promise.allSettled([
+          fetch('/api/commissions?limit=100').then(r => r.json()),
+          fetch('/api/affiliates/commissions?period=last_30d').then(r => r.json()),
+        ])
+        if (commRes.status === 'fulfilled') setCommissions(commRes.value.data ?? [])
+        if (affRes.status === 'fulfilled') {
+          const d = affRes.value
+          setAffComms(d.recent ?? [])
+          setAffSummary({
+            total:    parseFloat(d.total_commissions  ?? '0'),
+            approved: parseFloat(d.approved_commissions ?? '0'),
+            pending:  parseFloat(d.pending_commissions  ?? '0'),
+            operator: parseFloat(d.operator_total ?? '0'),
+            antonio:  parseFloat(d.antonio_total  ?? '0'),
+          })
         }
       } catch {
         setCommissions([])
@@ -146,7 +173,8 @@ export default function CommissionsPage() {
   const projections = useMemo(() => buildProjections(monthlySales * 100, commRate / 100), [monthlySales, commRate])
 
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-    { id: 'commissions', label: 'Comisiones',   icon: Coins    },
+    { id: 'commissions', label: 'Vendedores',   icon: Coins    },
+    { id: 'affiliates',  label: 'Afiliados',    icon: Globe    },
     { id: 'growthfund',  label: 'GrowthFund',   icon: Zap      },
     { id: 'projections', label: 'Proyecciones', icon: BarChart2 },
   ]
@@ -165,12 +193,20 @@ export default function CommissionsPage() {
           </h1>
           <p className="text-sm text-brand-muted mt-1">{commissions.length} transacciones · GrowthFund 30% incluido</p>
         </div>
-        <button
-          onClick={() => exportCSV(filtered)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-brand-card border border-brand-border text-brand-muted hover:text-brand-text rounded-xl text-sm transition-colors"
-        >
-          <Download size={14} /> Exportar CSV
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/commissions/manual"
+            className="flex items-center gap-2 px-4 py-2.5 btn-gradient text-white rounded-xl text-sm font-medium"
+          >
+            <Plus size={14} /> Registrar manual
+          </Link>
+          <button
+            onClick={() => exportCSV(filtered)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand-card border border-brand-border text-brand-muted hover:text-brand-text rounded-xl text-sm transition-colors"
+          >
+            <Download size={14} /> Exportar CSV
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
@@ -206,6 +242,105 @@ export default function CommissionsPage() {
           </button>
         ))}
       </div>
+
+      {/* ── TAB AFILIADOS ─────────────────────────────────────────────────────── */}
+      {activeTab === 'affiliates' && (
+        <div className="space-y-4 animate-fade-in">
+          {/* KPIs afiliados */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Total (30 días)', value: affSummary.total,    color: 'text-brand-text' },
+              { label: 'Aprobadas',        value: affSummary.approved, color: 'text-brand-green' },
+              { label: 'Pendientes',       value: affSummary.pending,  color: 'text-brand-yellow' },
+              { label: 'Tu ganancia (70%)', value: affSummary.operator, color: 'text-brand-primary' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="bg-brand-card border border-brand-border rounded-2xl p-4">
+                <p className="text-[10px] text-brand-faint uppercase tracking-wider mb-1">{label}</p>
+                <p className={`text-xl font-bold font-mono ${color}`}>
+                  ${value.toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* GrowthFund share */}
+          {affSummary.antonio > 0 && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-brand-primary/8 border border-brand-primary/20 rounded-xl">
+              <Zap size={13} className="text-brand-primary" />
+              <p className="text-xs text-brand-muted">
+                GrowthFund (30%): <span className="text-brand-primary font-semibold">${affSummary.antonio.toFixed(2)} MXN</span> reinvertidos en nuevas campañas
+              </p>
+            </div>
+          )}
+
+          {/* Tabla de comisiones afiliadas */}
+          <div className="bg-brand-card border border-brand-border rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-brand-border">
+              <p className="text-xs font-semibold text-brand-muted uppercase tracking-wider">
+                Últimas comisiones afiliadas
+              </p>
+              <Link href="/dashboard/commissions/manual"
+                className="text-[10px] text-brand-primary hover:underline flex items-center gap-1">
+                <Plus size={9} /> Registrar manual
+              </Link>
+            </div>
+            <div className="grid grid-cols-[80px_1fr_80px_90px_90px_80px_80px] gap-2 px-4 py-2 border-b border-brand-border text-[10px] font-semibold text-brand-faint uppercase tracking-wider">
+              <span>Fecha</span><span>Producto</span><span>Red</span>
+              <span>Venta</span><span>Comisión</span><span>70%</span><span>Estado</span>
+            </div>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-11 border-b border-brand-border animate-pulse px-4 flex items-center">
+                  <div className="h-3 bg-brand-hover rounded w-full" />
+                </div>
+              ))
+            ) : affComms.length === 0 ? (
+              <div className="text-center py-12 text-brand-muted">
+                <Globe size={32} className="mx-auto mb-3 opacity-20" />
+                <p className="text-sm font-medium text-brand-text mb-1">Sin comisiones afiliadas aún</p>
+                <p className="text-xs text-brand-muted mb-3">
+                  Configura el postback en MercadoLibre o registra comisiones manualmente.
+                </p>
+                <Link href="/dashboard/commissions/manual"
+                  className="text-xs text-brand-primary hover:underline">
+                  Registrar primera comisión →
+                </Link>
+              </div>
+            ) : affComms.map((c) => (
+              <div key={c.id}
+                className="grid grid-cols-[80px_1fr_80px_90px_90px_80px_80px] gap-2 px-4 py-3 border-b border-brand-border hover:bg-brand-hover/30 transition-colors items-center text-xs">
+                <span className="text-brand-muted tabular-nums">
+                  {fmtDate(c.sale_date ?? c.created_at)}
+                </span>
+                <span className="text-brand-text truncate font-medium">{c.product_name ?? 'Producto'}</span>
+                <span className="text-brand-muted capitalize text-[10px]">{c.network}</span>
+                <span className="text-brand-text tabular-nums font-mono">${parseFloat(c.sale_amount).toFixed(0)}</span>
+                <span className="text-brand-text font-medium tabular-nums font-mono">
+                  ${parseFloat(c.commission_amount).toFixed(2)}
+                </span>
+                <span className="text-brand-green tabular-nums font-mono">
+                  ${parseFloat(c.operator_share).toFixed(2)}
+                </span>
+                <span className={cn(
+                  'text-[10px] font-bold px-1.5 py-0.5 rounded-full text-center',
+                  c.status === 'approved' || c.status === 'paid'
+                    ? 'bg-brand-green/10 text-brand-green'
+                    : 'bg-brand-yellow/10 text-brand-yellow',
+                )}>
+                  {c.status === 'approved' ? 'Aprob.' : c.status === 'paid' ? 'Pagado' : 'Pend.'}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-brand-card border border-brand-border rounded-xl p-3 space-y-1">
+            <p className="text-xs font-semibold text-brand-text">URL de postback para configurar en cada red:</p>
+            <code className="text-[10px] text-brand-primary">
+              https://www.trendpilot.marketing/api/affiliates/postback
+            </code>
+          </div>
+        </div>
+      )}
 
       {/* ── TAB 1: Comisiones ─────────────────────────────────────────────────── */}
       {activeTab === 'commissions' && (
