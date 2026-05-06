@@ -10,6 +10,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { recordCommission }          from '@/lib/ml-affiliates'
 import { logServerError }            from '@/lib/logger'
+import { OPERADORES }                from '@/lib/resend'
+
+// Envía email de comisión en background (no bloquea respuesta al postback)
+async function sendCommissionEmail(params: {
+  network:          string
+  productName:      string
+  saleAmount:       number
+  commissionAmount: number
+  campaignSlug?:    string
+}) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.trendpilot.marketing'
+
+  // Intentar asociar campaña a un operador; fallback a sinaloa
+  const operatorEmail = OPERADORES.sinaloa
+  const operatorName  = 'Operador TrendPilot'
+
+  try {
+    await fetch(`${baseUrl}/api/emails/commission`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        operatorName,
+        operatorEmail,
+        product:          params.productName,
+        saleAmount:       params.saleAmount,
+        commissionAmount: params.commissionAmount,
+        network:          params.network,
+        date:             new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }),
+      }),
+    })
+  } catch (err) {
+    console.warn('[postback] No se pudo enviar email de comisión:', err)
+  }
+}
 
 // ── GET — MercadoLibre y redes que usan query params ─────────────────────────
 
@@ -60,6 +94,15 @@ export async function GET(request: NextRequest) {
       network, transactionId, saleAmount,
       commission: result.commissionAmount,
     })
+
+    // Enviar email de notificación (fire-and-forget)
+    sendCommissionEmail({
+      network,
+      productName:      product,
+      saleAmount,
+      commissionAmount: result.commissionAmount,
+      campaignSlug,
+    }).catch(() => {})
   } catch (err) {
     logServerError(err, 'GET /api/affiliates/postback')
   }
@@ -117,6 +160,14 @@ export async function POST(request: NextRequest) {
       network, transactionId, saleAmount,
       commission: result.commissionAmount,
     })
+
+    // Enviar email de notificación (fire-and-forget)
+    sendCommissionEmail({
+      network,
+      productName:      productName,
+      saleAmount,
+      commissionAmount: result.commissionAmount,
+    }).catch(() => {})
   } catch (err) {
     logServerError(err, 'POST /api/affiliates/postback')
   }

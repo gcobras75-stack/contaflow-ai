@@ -6,7 +6,7 @@ import { NextRequest, NextResponse }                 from 'next/server'
 import { db }                                        from '@/lib/db'
 import { vendors }                                   from '@/lib/schema'
 import { eq }                                        from 'drizzle-orm'
-import { sendContractSigned }                        from '@/lib/resend'
+import { emailContractSigned }                        from '@/lib/resend'
 import { sendVendorWelcome }                         from '@/lib/twilio'
 import { logServerError }                            from '@/lib/logger'
 
@@ -57,7 +57,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Notificar al vendor por email y WhatsApp
     await Promise.allSettled([
-      sendContractSigned(vendor.email, vendor.name),
+      (async () => {
+        const { subject, html } = emailContractSigned({ vendor_name: vendor.name })
+        await import('@/lib/resend').then(({ send }) => send(vendor.email, subject, html))
+      })(),
       vendor.whatsapp_number
         ? sendVendorWelcome(vendor.whatsapp_number, vendor.name)
         : Promise.resolve(null),

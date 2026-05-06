@@ -843,6 +843,23 @@ cron.schedule('*/15 * * * *', syncMetaAds, { timezone: 'America/Mexico_City' })
 // Cada hora — refrescar tendencias Google + Claude
 cron.schedule('0 * * * *', refreshTrends, { timezone: 'America/Mexico_City' })
 
+// ─── CRON 12 — Lunes 8am CDM (14:00 UTC): reporte semanal por email ──────────
+//
+// Envía reporte semanal a antonio + operadores activos con métricas reales.
+
+async function weeklyEmailReport() {
+  log('INFO', 'Enviando reporte semanal por email…')
+  try {
+    const res = await apiPost('/api/emails/weekly-report', {})
+    log('INFO', `Email semanal enviado: ${res.sent ?? 0} destinatarios`)
+  } catch (err) {
+    log('WARN', 'Error en weeklyEmailReport', err)
+  }
+}
+
+// Lunes a las 8:00am CDM = 14:00 UTC
+cron.schedule('0 14 * * 1', weeklyEmailReport)
+
 // ─── Arranque ─────────────────────────────────────────────────────────────────
 
 log('INFO', '🚀 TrendPilot Worker iniciado')
