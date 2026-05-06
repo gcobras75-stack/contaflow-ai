@@ -105,6 +105,52 @@ Ganancia neta: $0 MXN
 Activa campanas para generar ventas.
 GrowthFund disponible: $124,500 MXN`
       }
+      else if (cmd.includes('estado de mi pedido') || cmd.includes('mi pedido') || cmd.includes('rastreo') || cmd === 'pedido') {
+        respuesta = `TrendPilot Import - Seguimiento
+
+Para consultar tu pedido escribe:
+pedido [tu número de rastreo]
+
+O bien, incluye el nombre del producto:
+pedido lentes 300 piezas
+
+Si acaba de confirmar tu pedido, en 24h
+ya tendrás tu número de rastreo.
+
+También puedes ver el estado en:
+trendpilot.marketing`
+      }
+      else if (cmd.startsWith('pedido ') && cmd.length > 7) {
+        const ref = body.slice(body.indexOf(' ') + 1).trim()
+        respuesta = `TrendPilot Import
+
+Buscando pedido: "${ref}"
+
+Para consulta exacta visita:
+trendpilot.marketing
+
+O escribe al asesor:
+trendpilot.marketing (botón flotante)
+
+Recibirás actualizaciones automáticas
+en WhatsApp en cada etapa:
+Confirmado > Producción > Envío >
+Puerto > Aduana > En camino > Entregado`
+      }
+      else if (cmd.includes('importar') || cmd.includes('proveedor') || cmd.includes('china') || cmd.includes('alibaba')) {
+        respuesta = `TrendPilot Import - Asesor
+
+Para importar desde China usa nuestro
+buscador de proveedores verificados:
+
+trendpilot.marketing/buscar
+
+También puedes calcular tus impuestos:
+trendpilot.marketing/calculadora
+
+O habla con el asesor IA directamente:
+trendpilot.marketing (botón 💬)`
+      }
       else if (cmd === 'tendencias') {
         respuesta = `Tendencias HOY en Mexico
 

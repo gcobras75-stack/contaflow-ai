@@ -289,6 +289,61 @@ export const regions = pgTable('regions', {
   index('regions_slug_idx').on(t.slug),
 ])
 
+// ─── import_order_status enum ────────────────────────────────────────────────
+
+export const importOrderStatusEnum = pgEnum('import_order_status', [
+  'confirmed', 'production', 'ready_to_ship', 'in_transit',
+  'arrived_port', 'customs', 'customs_cleared', 'in_delivery', 'delivered',
+])
+
+// ─── supplier_conversations ───────────────────────────────────────────────────
+
+export const supplierConversations = pgTable('supplier_conversations', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  user_phone:  text('user_phone').notNull(),
+  product_id:  text('product_id').notNull(),
+  supplier_id: text('supplier_id').notNull(),
+  messages:    jsonb('messages').$type<Array<{
+    role: 'user' | 'supplier' | 'system'
+    content: string
+    translated?: string
+    warning?: string
+    timestamp: string
+  }>>().default([]),
+  created_at:  timestamp('created_at').notNull().defaultNow(),
+  updated_at:  timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('supplier_conv_phone_idx').on(t.user_phone),
+  index('supplier_conv_product_idx').on(t.product_id),
+])
+
+// ─── import_orders ────────────────────────────────────────────────────────────
+
+export const importOrders = pgTable('import_orders', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  user_phone:       text('user_phone').notNull(),
+  product_name:     text('product_name').notNull(),
+  supplier_name:    text('supplier_name').notNull(),
+  order_value_usd:  integer('order_value_usd').notNull().default(0),  // centavos USD
+  quantity:         integer('quantity').notNull().default(0),
+  tracking_number:  text('tracking_number'),
+  carrier:          text('carrier'),                                   // COSCO | Maersk | DHL | FedEx
+  ship_date:        timestamp('ship_date'),
+  eta_port:         timestamp('eta_port'),
+  eta_mexico:       timestamp('eta_mexico'),
+  agent_id:         text('agent_id'),                                  // agente aduanal asignado
+  status:           importOrderStatusEnum('status').notNull().default('confirmed'),
+  notes:            text('notes'),
+  product_image:    text('product_image'),
+  origin_port:      text('origin_port').default('Guangzhou'),
+  destination_city: text('destination_city'),
+  created_at:       timestamp('created_at').notNull().defaultNow(),
+  updated_at:       timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('import_orders_phone_idx').on(t.user_phone),
+  index('import_orders_status_idx').on(t.status),
+])
+
 // ─── Relations ───────────────────────────────────────────────────────────────
 
 export const vendorRelations = relations(vendors, ({ many }) => ({
